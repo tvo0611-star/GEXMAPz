@@ -1,27 +1,41 @@
 import { useEffect, useRef, useState } from "react";
 import { createChart, CandlestickSeries, LineStyle } from "lightweight-charts";
 
+const TRADIER_TOKEN = import.meta.env.VITE_TRADIER_TOKEN;
+
 async function fetchCandles(ticker) {
-  const res = await fetch(
-    `/api/yahoo/v8/finance/chart/${ticker}?interval=5m&range=1d&includePrePost=false`
-  );
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  // Build today's date range in ET
+  const now = new Date();
+  const et = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const pad = (n) => String(n).padStart(2, "0");
+  const dateStr = `${et.getFullYear()}-${pad(et.getMonth() + 1)}-${pad(et.getDate())}`;
+  const start = `${dateStr} 09:30`;
+  const end   = `${dateStr} 16:00`;
+
+  const url =
+    `https://api.tradier.com/v1/markets/timesales` +
+    `?symbol=${ticker}&interval=5min&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&session_filter=open`;
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${TRADIER_TOKEN}`,
+      Accept: "application/json",
+    },
+  });
+  if (!res.ok) throw new Error(`Tradier ${res.status}`);
   const json = await res.json();
-  const result = json?.chart?.result?.[0];
-  if (!result) throw new Error("No chart data returned");
 
-  const timestamps = result.timestamp ?? [];
-  const q = result.indicators.quote[0];
+  const series = json?.series?.data;
+  if (!series) throw new Error("No timesales data");
+  const list = Array.isArray(series) ? series : [series];
 
-  return timestamps
-    .map((t, i) => ({
-      time: t,
-      open: q.open[i],
-      high: q.high[i],
-      low: q.low[i],
-      close: q.close[i],
-    }))
-    .filter((c) => c.open != null && c.high != null && c.low != null && c.close != null);
+  return list.map((bar) => ({
+    time: Math.floor(new Date(bar.time).getTime() / 1000),
+    open:  bar.open,
+    high:  bar.high,
+    low:   bar.low,
+    close: bar.close,
+  }));
 }
 
 const CHART_OPTS = {
@@ -191,7 +205,7 @@ export default function ChartPanel({ ticker, callWalls = [], putWalls = [], flip
         .catch((err) => {
           if (!active) return;
           console.error("ChartPanel fetch failed:", err);
-          setError("Could not load price data from Yahoo Finance.");
+          setError("Could not load price data from Tradier.");
           setLoading(false);
         });
 
