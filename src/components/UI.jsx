@@ -14,55 +14,80 @@ export function Header({ ticker, quote, onSearch, activePage, setPage }) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-bg/90 backdrop-blur">
-      <div className="max-w-screen-2xl mx-auto px-4 h-14 flex items-center gap-6">
-        {/* Logo */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="w-7 h-7 rounded bg-accent/10 border border-accent/30 flex items-center justify-center">
-            <span className="text-accent font-mono text-xs font-bold">Θ</span>
+      <div className="max-w-screen-2xl mx-auto px-4">
+
+        {/* Main row: logo + search + quote + desktop nav */}
+        <div className="h-14 flex items-center gap-3">
+          {/* Logo */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-7 h-7 rounded bg-accent/10 border border-accent/30 flex items-center justify-center">
+              <span className="text-accent font-mono text-xs font-bold">Θ</span>
+            </div>
+            <span className="hidden sm:block font-mono text-sm font-semibold text-text tracking-tight">GEXmapz 🔥</span>
           </div>
-          <span className="font-mono text-sm font-semibold text-text tracking-tight">GEXmapz 🔥</span>
+
+          {/* Search — full width on mobile */}
+          <form onSubmit={handleSearch} className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={14} />
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value.toUpperCase())}
+              placeholder="Search ticker…"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              className="w-full bg-surface border border-border rounded-md pl-8 pr-3 py-2 text-sm font-mono text-text placeholder-muted focus:outline-none focus:border-accent/50 transition-colors"
+            />
+          </form>
+
+          {/* Quote pill — desktop only */}
+          {quote && (
+            <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-md bg-surface border border-border">
+              <span className="font-mono text-sm font-semibold text-accent">{quote.ticker}</span>
+              <span className="font-mono text-sm">${quote.price.toFixed(2)}</span>
+              <span className={clsx("font-mono text-xs flex items-center gap-1", quote.change >= 0 ? "text-green" : "text-red")}>
+                {quote.change >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                {quote.change >= 0 ? "+" : ""}{quote.change.toFixed(2)} ({quote.changePct >= 0 ? "+" : ""}{quote.changePct.toFixed(2)}%)
+              </span>
+            </div>
+          )}
+
+          {/* Nav — desktop only */}
+          <nav className="hidden sm:flex items-center gap-1 ml-auto">
+            {pages.map((p) => (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={clsx(
+                  "px-3 py-1.5 rounded text-xs font-mono font-medium transition-all whitespace-nowrap",
+                  activePage === p
+                    ? "bg-accent/10 text-accent border border-accent/30 glow"
+                    : "text-muted hover:text-text"
+                )}
+              >
+                {p}
+              </button>
+            ))}
+          </nav>
         </div>
 
-        {/* Search */}
-        <form onSubmit={handleSearch} className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={14} />
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value.toUpperCase())}
-            placeholder="Search ticker…"
-            className="w-full bg-surface border border-border rounded-md pl-8 pr-3 py-1.5 text-sm font-mono text-text placeholder-muted focus:outline-none focus:border-accent/50 transition-colors"
-          />
-        </form>
-
-        {/* Quote pill */}
-        {quote && (
-          <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-md bg-surface border border-border">
-            <span className="font-mono text-sm font-semibold text-accent">{quote.ticker}</span>
-            <span className="font-mono text-sm">${quote.price.toFixed(2)}</span>
-            <span className={clsx("font-mono text-xs flex items-center gap-1", quote.change >= 0 ? "text-green" : "text-red")}>
-              {quote.change >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-              {quote.change >= 0 ? "+" : ""}{quote.change.toFixed(2)} ({quote.changePct >= 0 ? "+" : ""}{quote.changePct.toFixed(2)}%)
-            </span>
-          </div>
-        )}
-
-        {/* Nav */}
-        <nav className="flex items-center gap-1 ml-auto">
+        {/* Mobile nav — scrollable strip below search row */}
+        <div className="sm:hidden flex items-center gap-1 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
           {pages.map((p) => (
             <button
               key={p}
               onClick={() => setPage(p)}
               className={clsx(
-                "px-3 py-1.5 rounded text-xs font-mono font-medium transition-all",
+                "px-3 py-1.5 rounded text-xs font-mono font-medium transition-all whitespace-nowrap shrink-0",
                 activePage === p
-                  ? "bg-accent/10 text-accent border border-accent/30 glow"
-                  : "text-muted hover:text-text"
+                  ? "bg-accent/10 text-accent border border-accent/30"
+                  : "text-muted"
               )}
             >
               {p}
             </button>
           ))}
-        </nav>
+        </div>
+
       </div>
     </header>
   );
