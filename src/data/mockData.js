@@ -149,7 +149,7 @@ export async function fetchGEXMatrix(ticker, price) {
     expirations.forEach((exp, i) => {
       const chain = chains[i];
       if (!chain) {
-        cells[strike][exp] = { gex: 0, callOI: 0, putOI: 0 };
+        cells[strike][exp] = { gex: 0, flowGex: 0, callOI: 0, putOI: 0, callVolume: 0, putVolume: 0 };
         return;
       }
 
@@ -162,7 +162,13 @@ export async function fetchGEXMatrix(ticker, price) {
       const putGEX = put ? put.gamma * putOI * price * price * 0.01 : 0;
       const gex = parseFloat((callGEX - putGEX).toFixed(0));
 
-      cells[strike][exp] = { gex, callOI, putOI, callIV: call?.iv ?? 0, putIV: put?.iv ?? 0 };
+      const callVolume = call?.volume ?? 0;
+      const putVolume = put?.volume ?? 0;
+      const callFlowGEX = call ? call.gamma * callVolume * price * price * 0.01 : 0;
+      const putFlowGEX = put ? put.gamma * putVolume * price * price * 0.01 : 0;
+      const flowGex = parseFloat((callFlowGEX - putFlowGEX).toFixed(0));
+
+      cells[strike][exp] = { gex, flowGex, callOI, putOI, callVolume, putVolume, callIV: call?.iv ?? 0, putIV: put?.iv ?? 0 };
     });
   });
 

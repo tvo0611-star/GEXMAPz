@@ -116,6 +116,7 @@ function getCellValue(cell, view) {
   if (!cell) return 0;
   if (view === "gex") return cell.gex;
   if (view === "vex") return Math.abs(cell.gex);
+  if (view === "flowGex") return cell.flowGex ?? 0;
   if (view === "callOI") return cell.callOI;
   if (view === "putOI") return cell.putOI;
   if (view === "netOI") return cell.callOI - cell.putOI;
@@ -132,6 +133,7 @@ function getTooltipLabel(view) {
   switch (view) {
     case "gex": return "GEX";
     case "vex": return "ABS GEX";
+    case "flowGex": return "Flow GEX";
     case "callOI": return "Call OI";
     case "putOI": return "Put OI";
     case "netOI": return "Net OI";
@@ -140,6 +142,9 @@ function getTooltipLabel(view) {
 }
 
 function getTooltipDescription(view, value) {
+  if (view === "flowGex") {
+    return value === 0 ? "No volume flow" : value > 0 ? "Call flow dominates — dealers short calls" : "Put flow dominates — dealers short puts";
+  }
   if (view === "callOI") {
     return value === 0 ? "No call open interest" : "High call concentration";
   }
@@ -248,14 +253,16 @@ export default function GEXPage({ ticker, quote }) {
   }
 
   // Total GEX per strike (sum across all expirations) — used for King column
+  // Switches between structural (OI-based) and flow (volume-based) depending on view
+  const summaryField = view === "flowGex" ? "flowGex" : "gex";
   const totalGEXByStrike = {};
   let maxAbsTotal = 1;
   let kingStrike = null;
   if (matrix) {
     matrix.strikes.forEach((strike) => {
       const total = matrix.expirations.reduce((sum, exp) => {
-        const cell = matrix.cells[strike]?.[exp] ?? { gex: 0 };
-        return sum + (cell.gex ?? 0);
+        const cell = matrix.cells[strike]?.[exp] ?? {};
+        return sum + (cell[summaryField] ?? 0);
       }, 0);
       totalGEXByStrike[strike] = total;
       if (Math.abs(total) > maxAbsTotal) {
@@ -293,10 +300,10 @@ export default function GEXPage({ ticker, quote }) {
       {quote && (
         <div className="grid grid-cols-2 sm:grid-cols-7 gap-3 mb-4">
           <StatCard
-            label={view === "gex" ? "NET GEX" : view === "vex" ? "ABS GEX" : view === "callOI" ? "CALL OI" : view === "putOI" ? "PUT OI" : "NET OI"}
+            label={view === "gex" ? "NET GEX" : view === "vex" ? "ABS GEX" : view === "flowGex" ? "FLOW GEX" : view === "callOI" ? "CALL OI" : view === "putOI" ? "PUT OI" : "NET OI"}
             value={fmtVal(totalValue)}
             color={totalValue >= 0 ? "text-green-400" : "text-blue-400"}
-            sub={view === "gex" ? (totalValue >= 0 ? "Dealers long Γ" : "Dealers short Γ") : view === "vex" ? "Unsigned gamma exposure" : view === "callOI" ? "Call open interest" : view === "putOI" ? "Put open interest" : "Call OI minus Put OI"}
+            sub={view === "gex" ? (totalValue >= 0 ? "Dealers long Γ" : "Dealers short Γ") : view === "vex" ? "Unsigned gamma exposure" : view === "flowGex" ? (totalValue >= 0 ? "Call flow dominant" : "Put flow dominant") : view === "callOI" ? "Call open interest" : view === "putOI" ? "Put open interest" : "Call OI minus Put OI"}
           />
           <StatCard label="SPOT PRICE" value={`$${price.toFixed(2)}`} sub={`ATM: $${atm}`} color="text-accent" />
           <StatCard label="GAMMA FLIP" value={view === "gex" || view === "vex" ? (flipPoint ? `$${flipPoint}` : "—") : "—"} sub={matrix ? `Near exp: ${matrix.expirations[0]}` : "Zero-crossing level"} color="text-yellow-300" />
@@ -314,6 +321,7 @@ export default function GEXPage({ ticker, quote }) {
             {[
               { id: "gex", label: "GEX" },
               { id: "vex", label: "VEX" },
+              { id: "flowGex", label: "Flow GEX" },
               { id: "callOI", label: "Call OI" },
               { id: "putOI", label: "Put OI" },
               { id: "netOI", label: "Net OI" },
@@ -394,7 +402,8 @@ export default function GEXPage({ ticker, quote }) {
               </div>
               <div className="text-muted mt-1">{getTooltipDescription(view, tooltip.value)}</div>
               <div className="text-muted mt-1">Call OI: {fmtVal(tooltip.cell.callOI)} • Put OI: {fmtVal(tooltip.cell.putOI)}</div>
-              <div className="text-muted mt-1">GEX: {fmtVal(tooltip.cell.gex)}</div>
+              <div className="text-muted mt-1">Call Vol: {fmtVal(tooltip.cell.callVolume ?? 0)} • Put Vol: {fmtVal(tooltip.cell.putVolume ?? 0)}</div>
+              <div className="text-muted mt-1">GEX: {fmtVal(tooltip.cell.gex)} • Flow GEX: {fmtVal(tooltip.cell.flowGex ?? 0)}</div>
               {tooltip.strike === atm && <div className="text-accent mt-1">⚡ ATM strike</div>}
               {tooltip.strike === flipPoint && <div className="text-yellow-400 mt-1">★ Gamma flip level</div>}
             </div>
@@ -409,7 +418,7 @@ export default function GEXPage({ ticker, quote }) {
                 </th>
                 {/* Total GEX column header */}
                 <th className="sticky z-20 bg-surface border-b border-r border-border/60 px-2 py-2 text-center font-mono font-semibold whitespace-nowrap min-w-[90px] text-accent/80" style={{ fontSize: 10, left: 80 }}>
-                  Σ GEX
+                  {view === "flowGex" ? "Σ Flow" : "Σ GEX"}
                 </th>
                 {matrix.expirations.map((exp) => {
                   const isToday = exp === new Date().toISOString().split("T")[0];
