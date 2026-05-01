@@ -203,8 +203,9 @@ function GEXBarChart({ strikes, values, price, title, color }) {
 export default function ExposurePage({ ticker, quote }) {
   const [matrix, setMatrix] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState("gex"); // gex | flow
-  const [scope, setScope] = useState("all"); // all | 0dte
+  const [view, setView] = useState("gex");
+  const [scope, setScope] = useState("all");
+  const [range, setRange] = useState(0.10); // ±% around spot
 
   useEffect(() => {
     if (!ticker || !quote) return;
@@ -225,7 +226,9 @@ export default function ExposurePage({ ticker, quote }) {
   const price = quote?.price ?? 0;
   const today = new Date().toISOString().split("T")[0];
 
-  const strikes = [...matrix.strikes].sort((a, b) => a - b);
+  const strikes = [...matrix.strikes]
+    .sort((a, b) => a - b)
+    .filter((s) => s >= price * (1 - range) && s <= price * (1 + range));
 
   const gexValues = strikes.map((strike) => {
     if (scope === "0dte") {
@@ -271,7 +274,7 @@ export default function ExposurePage({ ticker, quote }) {
           ))}
         </div>
         <div className="flex gap-1">
-          {[{ id: "all", label: "All expirations" }, { id: "0dte", label: "0DTE only" }].map((s) => (
+          {[{ id: "all", label: "All exp" }, { id: "0dte", label: "0DTE" }].map((s) => (
             <button
               key={s.id}
               onClick={() => setScope(s.id)}
@@ -283,6 +286,22 @@ export default function ExposurePage({ ticker, quote }) {
               )}
             >
               {s.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1">
+          {[0.05, 0.10, 0.15, 0.20].map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={clsx(
+                "px-3 py-1.5 rounded text-xs font-mono transition-all",
+                range === r
+                  ? "bg-accent/10 text-accent border border-accent/30"
+                  : "bg-surface border border-border text-muted hover:text-text"
+              )}
+            >
+              ±{(r * 100).toFixed(0)}%
             </button>
           ))}
         </div>
