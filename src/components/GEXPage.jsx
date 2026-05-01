@@ -170,8 +170,10 @@ export default function GEXPage({ ticker, quote }) {
   const [matrix, setMatrix] = useState(null);
   const [loading, setLoading] = useState(false);
   const [tooltip, setTooltip] = useState(null);
-  const [view, setView] = useState("gex"); // gex | vex | callOI | putOI | netOI
+  const [view, setView] = useState("gex");
   const [infoOpen, setInfoOpen] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState(null);
   const containerRef = useRef(null);
   const initialLoadRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
@@ -227,6 +229,49 @@ export default function GEXPage({ ticker, quote }) {
     targetRow?.scrollIntoView({ block: "center", behavior: "smooth" });
     initialScrollDoneRef.current = true;
   }, [matrix, quote]);
+
+  // Reset analysis when ticker changes
+  useEffect(() => { setAnalysis(null); }, [ticker]);
+
+  const handleAnalyze = async () => {
+    if (!matrix || !quote) return;
+    setAnalyzing(true);
+    setAnalysis(null);
+
+    const flowByStrike = matrix.strikes.map((strike) => ({
+      strike,
+      flow: matrix.expirations.reduce((sum, exp) => sum + (matrix.cells[strike]?.[exp]?.flowGex ?? 0), 0),
+    }));
+    const topPos = [...flowByStrike].sort((a, b) => b.flow - a.flow).slice(0, 3).filter((s) => s.flow > 0).map((s) => `$${s.strike}`).join(", ");
+    const topNeg = [...flowByStrike].sort((a, b) => a.flow - b.flow).slice(0, 3).filter((s) => s.flow < 0).map((s) => `$${s.strike}`).join(", ");
+
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticker,
+          price: quote.price,
+          flipPoint,
+          callWalls: matrix.callWalls,
+          putWalls: matrix.putWalls,
+          maxPain: matrix.maxPain,
+          kingStrike,
+          kingGex: fmtVal(totalGEXByStrike[kingStrike] ?? 0),
+          netGex: totalValue,
+          topPositiveFlow: topPos || null,
+          topNegativeFlow: topNeg || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setAnalysis(data.analysis);
+    } catch (err) {
+      setAnalysis(`Error: ${err.message}`);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   if (!ticker) return <EmptyState message="Search a ticker to load the GEX matrix" />;
 
@@ -311,6 +356,39 @@ export default function GEXPage({ ticker, quote }) {
           <StatCard label="CALL WALLS" value={matrix?.callWalls?.length ? matrix.callWalls.map((w) => `$${w.strike}`).join(", ") : "—"} sub="Top 3 0DTE call OI" color="text-green-300" />
           <StatCard label="PUT WALLS" value={matrix?.putWalls?.length ? matrix.putWalls.map((w) => `$${w.strike}`).join(", ") : "—"} sub="Top 3 0DTE put OI" color="text-red-300" />
           <StatCard label="MAX PAIN" value={matrix?.maxPain ? `$${matrix.maxPain.toFixed(1)}` : "—"} sub="Minimizes expiring worthless" color="text-white" />
+        </div>
+      )}
+
+      {/* AI Analysis panel */}
+      {matrix && (
+        <div className="bg-surface border border-border rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-semibold text-accent">⚡ AI Analysis</span>
+              <span className="font-mono text-xs text-muted">powered by Claude</span>
+            </div>
+            <button
+              onClick={handleAnalyze}
+              disabled={analyzing}
+              className={clsx(
+                "px-3 py-1.5 rounded text-xs font-mono transition-all",
+                analyzing
+                  ? "bg-surface border border-border text-muted cursor-wait"
+                  : "bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20"
+              )}
+            >
+              {analyzing ? "Analyzing…" : analysis ? "Re-analyze" : "Analyze"}
+            </button>
+          </div>
+          {analyzing && (
+            <div className="text-xs font-mono text-muted animate-pulse">Reading gamma levels…</div>
+          )}
+          {analysis && !analyzing && (
+            <p className="text-sm font-mono text-text leading-relaxed">{analysis}</p>
+          )}
+          {!analysis && !analyzing && (
+            <p className="text-xs font-mono text-muted">Click Analyze to get a Claude-powered breakdown of the current gamma structure.</p>
+          )}
         </div>
       )}
 
