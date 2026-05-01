@@ -51,9 +51,7 @@ export default function App() {
         {page === "Chain" && <ChainPage ticker={ticker} quote={quote} />}
         {page === "GEX" && <GEXPage ticker={ticker} quote={quote} />}
         {page === "Exposure" && <ExposurePage ticker={ticker} quote={quote} />}
-        {page === "0DTE" && <ZeroDTEPage ticker={ticker} quote={quote} />}
-        {page === "Compare 0DTE" && <ComparePage0DTE />}
-        {page === "Compare GEX" && <CompareGEXPage />}
+{page === "Compare GEX" && <CompareGEXPage />}
       </main>
     </div>
   );
