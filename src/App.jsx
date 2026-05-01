@@ -3,6 +3,7 @@ import { fetchQuote } from "./data/mockData";
 import { Header } from "./components/UI";
 import ChainPage from "./components/ChainPage";
 import GEXPage from "./components/GEXPage";
+import ExposurePage from "./components/ExposurePage";
 import ZeroDTEPage from "./components/ZeroDTEPage";
 import ComparePage0DTE from "./components/ComparePage0DTE";
 import CompareGEXPage from "./components/CompareGEXPage";
@@ -49,6 +50,7 @@ export default function App() {
       <main>
         {page === "Chain" && <ChainPage ticker={ticker} quote={quote} />}
         {page === "GEX" && <GEXPage ticker={ticker} quote={quote} />}
+        {page === "Exposure" && <ExposurePage ticker={ticker} quote={quote} />}
         {page === "0DTE" && <ZeroDTEPage ticker={ticker} quote={quote} />}
         {page === "Compare 0DTE" && <ComparePage0DTE />}
         {page === "Compare GEX" && <CompareGEXPage />}
