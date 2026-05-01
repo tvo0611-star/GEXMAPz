@@ -10,7 +10,7 @@ export function Header({ ticker, quote, onSearch, activePage, setPage }) {
     if (input.trim()) { onSearch(input.trim().toUpperCase()); setInput(""); }
   };
 
-  const pages = ["GEX", "Exposure", "Chain", "Compare GEX"];
+  const pages = ["GEX", "Exposure", "Map", "Chain", "Compare GEX"];
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-bg/90 backdrop-blur">
