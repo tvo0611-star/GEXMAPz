@@ -60,7 +60,7 @@ function textColor(value, maxAbs) {
   return value < 0 ? "#dceeff" : "#fffff0";
 }
 
-function GEXColumn({ ticker, matrix, quote, maxAbsCell }) {
+function GEXColumn({ ticker, matrix, quote, maxAbsCell, view }) {
   const [tooltip, setTooltip] = useState(null);
   const price = quote?.price ?? 0;
   const atm = Math.round(price / 5) * 5;
@@ -98,7 +98,7 @@ function GEXColumn({ ticker, matrix, quote, maxAbsCell }) {
           <div className={clsx("font-bold", tooltip.value < 0 ? "text-purple-300" : tooltip.value > 0 ? "text-yellow-300" : "text-muted")}>
             {fmtVal(tooltip.value)}
           </div>
-          <div className="text-muted mt-1">{tooltip.value < 0 ? "Negative γ" : tooltip.value > 0 ? "Positive γ" : "No OI"}</div>
+          <div className="text-muted mt-1">{tooltip.value < 0 ? "Negative γ" : tooltip.value > 0 ? "Positive γ" : view === "flowGex" ? "No volume" : "No OI"}</div>
         </div>
       )}
 
@@ -123,8 +123,8 @@ function GEXColumn({ ticker, matrix, quote, maxAbsCell }) {
               const isATM = strike === atm;
               const callWallIndex = matrix.callWalls.findIndex((item) => item.strike === strike);
               const putWallIndex = matrix.putWalls.findIndex((item) => item.strike === strike);
-              const cell = (matrix.cells[strike]?.[today]) ?? { gex: 0, callOI: 0, putOI: 0 };
-              const value = cell.gex;
+              const cell = (matrix.cells[strike]?.[today]) ?? { gex: 0, flowGex: 0, callOI: 0, putOI: 0 };
+              const value = view === "flowGex" ? (cell.flowGex ?? 0) : cell.gex;
               const bg = gexColor(value, maxAbsCell);
               const fg = textColor(value, maxAbsCell);
               return (
@@ -190,6 +190,7 @@ export default function CompareGEXPage() {
     SPX: null,
   });
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState("gex");
   const containerRef = useRef(null);
   const initialLoadRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
@@ -265,21 +266,40 @@ export default function CompareGEXPage() {
 
   // Calculate global max abs for consistent scaling (0DTE only)
   const today = new Date().toISOString().split("T")[0];
+  const valueField = view === "flowGex" ? "flowGex" : "gex";
   let globalMaxAbsCell = 1;
   Object.values(matrices).forEach((matrix) => {
     if (!matrix) return;
     matrix.strikes.forEach((strike) => {
-      const cell = matrix.cells[strike]?.[today] ?? { gex: 0 };
-      const v = Math.abs(cell.gex);
+      const cell = matrix.cells[strike]?.[today] ?? {};
+      const v = Math.abs(cell[valueField] ?? 0);
       if (v > globalMaxAbsCell) globalMaxAbsCell = v;
     });
   });
 
   return (
     <div className="p-4 max-w-screen-2xl mx-auto">
-      <div className="mb-4">
-        <h2 className="text-lg font-mono font-semibold text-accent mb-2">GEX Comparison</h2>
-        <p className="text-sm font-mono text-muted">Compare gamma exposure across QQQ, SPY, and SPX. Green = positive gamma, Blue/Purple = negative gamma</p>
+      <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-lg font-mono font-semibold text-accent mb-1">GEX Comparison — 0DTE</h2>
+          <p className="text-sm font-mono text-muted">Green = positive gamma · Blue/Purple = negative gamma</p>
+        </div>
+        <div className="flex gap-1">
+          {[{ id: "gex", label: "GEX" }, { id: "flowGex", label: "Flow GEX" }].map((v) => (
+            <button
+              key={v.id}
+              onClick={() => setView(v.id)}
+              className={clsx(
+                "px-3 py-1.5 rounded text-xs font-mono transition-all",
+                view === v.id
+                  ? "bg-accent/10 text-accent border border-accent/30"
+                  : "bg-surface border border-border text-muted hover:text-text"
+              )}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div ref={containerRef} className="grid grid-cols-3 gap-3">
@@ -290,6 +310,7 @@ export default function CompareGEXPage() {
             matrix={matrices[ticker]}
             quote={quotes[ticker]}
             maxAbsCell={globalMaxAbsCell}
+            view={view}
           />
         ))}
       </div>
