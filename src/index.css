@@ -4,15 +4,37 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-bg: #0a0a0f;
+  --color-surface: #111118;
+  --color-border: #1e1e2e;
+  --color-accent: #00e5ff;
+  --color-green: #00ff88;
+  --color-red: #ff4466;
+  --color-muted: #4a4a6a;
+  --color-text: #e0e0f0;
+}
+
+html.light {
+  --color-bg: #f4f4fb;
+  --color-surface: #ffffff;
+  --color-border: #d0d0e8;
+  --color-accent: #0099bb;
+  --color-green: #008844;
+  --color-red: #cc1133;
+  --color-muted: #8888aa;
+  --color-text: #1a1a2e;
+}
+
 body {
-  background-color: #0a0a0f;
-  color: #e0e0f0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
   font-family: 'DM Sans', sans-serif;
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: #0a0a0f; }
-::-webkit-scrollbar-thumb { background: #1e1e2e; border-radius: 2px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
 
 .font-mono { font-family: 'IBM Plex Mono', monospace; }
 .chain-row:hover { background: rgba(0, 229, 255, 0.04); }

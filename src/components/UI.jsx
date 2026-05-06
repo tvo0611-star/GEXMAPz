@@ -1,9 +1,15 @@
-import { useState } from "react";
-import { Search, TrendingUp, TrendingDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, TrendingUp, TrendingDown, Sun, Moon } from "lucide-react";
 import { clsx } from "clsx";
 
 export function Header({ ticker, quote, onSearch, activePage, setPage }) {
   const [input, setInput] = useState("");
+  const [light, setLight] = useState(() => localStorage.getItem("theme") === "light");
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("light", light);
+    localStorage.setItem("theme", light ? "light" : "dark");
+  }, [light]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -67,6 +73,13 @@ export function Header({ ticker, quote, onSearch, activePage, setPage }) {
                 {p}
               </button>
             ))}
+            <button
+              onClick={() => setLight((v) => !v)}
+              className="ml-1 p-1.5 rounded text-muted hover:text-text transition-colors"
+              title={light ? "Switch to dark mode" : "Switch to light mode"}
+            >
+              {light ? <Moon size={15} /> : <Sun size={15} />}
+            </button>
           </nav>
         </div>
 
