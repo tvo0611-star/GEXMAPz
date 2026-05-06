@@ -43,11 +43,17 @@ const FLAG_STYLES = [
   { key: "highVol",    label: "HIGH VOL", cls: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
 ];
 
+const fmtExp = (exp) => {
+  const [, m, d] = exp.split("-");
+  return `${parseInt(m)}/${parseInt(d)}`;
+};
+
 export default function FlowPage({ ticker }) {
   const [rows, setRows]       = useState([]);
   const [loading, setLoading] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [filter, setFilter]   = useState("all");
+  const [expFilter, setExpFilter] = useState("all");
   const [minPrem, setMinPrem] = useState(10_000);
   const [sortBy, setSortBy]   = useState("premium");
 
@@ -56,6 +62,7 @@ export default function FlowPage({ ticker }) {
     try {
       const data = await fetchUnusualFlow(ticker);
       setRows(data);
+      setExpFilter("all");
       setScanned(true);
     } catch (e) {
       console.error(e);
@@ -64,13 +71,16 @@ export default function FlowPage({ ticker }) {
     }
   };
 
+  const expirations = [...new Set(rows.map((r) => r.exp))].sort();
+
   const filtered = rows
     .filter((r) => filter === "all" || r.type === filter)
+    .filter((r) => expFilter === "all" || r.exp === expFilter)
     .filter((r) => r.premium >= minPrem)
     .sort((a, b) => b[sortBy] - a[sortBy]);
 
-  const totalCallPrem = rows.filter((r) => r.type === "call").reduce((s, r) => s + r.premium, 0);
-  const totalPutPrem  = rows.filter((r) => r.type === "put" ).reduce((s, r) => s + r.premium, 0);
+  const totalCallPrem = filtered.filter((r) => r.type === "call").reduce((s, r) => s + r.premium, 0);
+  const totalPutPrem  = filtered.filter((r) => r.type === "put" ).reduce((s, r) => s + r.premium, 0);
   const pcRatio = totalCallPrem > 0 ? (totalPutPrem / totalCallPrem).toFixed(2) : "—";
 
   return (
@@ -111,6 +121,25 @@ export default function FlowPage({ ticker }) {
               <div className="text-xs text-muted font-mono mb-1">SHOWN</div>
               <div className="font-mono text-base font-semibold text-accent">{filtered.length}</div>
             </div>
+          </div>
+
+          {/* Expiration filter */}
+          <div className="flex items-center gap-2 mb-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            <span className="text-xs text-muted font-mono shrink-0">Exp</span>
+            {["all", ...expirations].map((exp) => (
+              <button
+                key={exp}
+                onClick={() => setExpFilter(exp)}
+                className={clsx(
+                  "px-3 py-1 rounded text-xs font-mono whitespace-nowrap shrink-0 transition-all",
+                  expFilter === exp
+                    ? "bg-accent/10 text-accent border border-accent/30"
+                    : "bg-surface border border-border text-muted"
+                )}
+              >
+                {exp === "all" ? "All" : fmtExp(exp)}
+              </button>
+            ))}
           </div>
 
           <div className="flex flex-wrap items-center gap-2 mb-3">
