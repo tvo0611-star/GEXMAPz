@@ -331,21 +331,20 @@ export default function GEXPage({ ticker, quote }) {
   }
 
   // Compute 1h change for NET GEX
-  const gexChangeLabel = (() => {
+  const gexChangeInfo = (() => {
     const history = gexHistoryRef.current;
-    if (history.length < 2) return null;
+    if (history.length < 2) return { collecting: true };
     const now = Date.now();
-    const eligible = history.slice(0, -1).filter((s) => now - s.timestamp > 60 * 1000);
-    if (!eligible.length) return null;
+    const eligible = history.slice(0, -1).filter((s) => now - s.timestamp > 30 * 1000);
+    if (!eligible.length) return { collecting: true };
     const oneHourAgo = now - 60 * 60 * 1000;
     const best = eligible.reduce((a, b) =>
       Math.abs(a.timestamp - oneHourAgo) < Math.abs(b.timestamp - oneHourAgo) ? a : b
     );
-    if (Math.abs(best.totalGex) < 1) return null;
+    if (Math.abs(best.totalGex) < 1) return { collecting: true };
     const pct = ((totalValue - best.totalGex) / Math.abs(best.totalGex)) * 100;
-    if (Math.abs(pct) < 0.5) return null;
     const ageMin = Math.round((now - best.timestamp) / 60000);
-    const timeLabel = ageMin >= 55 ? "1h ago" : `${ageMin}m ago`;
+    const timeLabel = ageMin < 1 ? "<1m ago" : ageMin >= 55 ? "1h ago" : `${ageMin}m ago`;
     return { pct, timeLabel };
   })();
 
@@ -381,9 +380,9 @@ export default function GEXPage({ ticker, quote }) {
             value={fmtVal(totalValue)}
             color={totalValue >= 0 ? "text-green-400" : "text-blue-400"}
             sub={
-              gexChangeLabel
-                ? <span className={gexChangeLabel.pct >= 0 ? "text-green-400" : "text-red-400"}>{gexChangeLabel.pct >= 0 ? "+" : ""}{gexChangeLabel.pct.toFixed(1)}% vs {gexChangeLabel.timeLabel}</span>
-                : view === "gex" ? (totalValue >= 0 ? "Dealers long Γ" : "Dealers short Γ") : view === "vex" ? "Unsigned gamma exposure" : view === "flowGex" ? (totalValue >= 0 ? "Call flow dominant" : "Put flow dominant") : view === "callOI" ? "Call open interest" : view === "putOI" ? "Put open interest" : "Call OI minus Put OI"
+              gexChangeInfo.collecting
+                ? <span className="text-muted/50 italic">building history…</span>
+                : <span className={gexChangeInfo.pct >= 0 ? "text-green-400" : "text-red-400"}>{gexChangeInfo.pct >= 0 ? "+" : ""}{gexChangeInfo.pct.toFixed(1)}% vs {gexChangeInfo.timeLabel}</span>
             }
           />
           <StatCard label="SPOT PRICE" value={`$${price.toFixed(2)}`} sub={`ATM: $${atm}`} color="text-accent" />
