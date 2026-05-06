@@ -381,11 +381,31 @@ export default function GEXPage({ ticker, quote }) {
             </button>
           </div>
           {analyzing && (
-            <div className="text-xs font-mono text-muted animate-pulse">Reading gamma levels…</div>
+            <div className="text-xs font-mono text-muted animate-pulse">📡 Reading gamma levels…</div>
           )}
-          {analysis && !analyzing && (
-            <p className="text-sm font-mono text-text leading-relaxed">{analysis}</p>
-          )}
+          {analysis && !analyzing && (() => {
+            let parsed = null;
+            try { parsed = JSON.parse(analysis); } catch {}
+            if (parsed?.overall) {
+              return (
+                <div className="space-y-3">
+                  <div className="border-l-2 border-accent/40 pl-3">
+                    <div className="text-xs font-mono font-bold text-accent mb-1 tracking-widest">📊 OVERALL LOOK</div>
+                    <p className="text-xs font-mono text-text leading-relaxed">{parsed.overall}</p>
+                  </div>
+                  <div className="border-l-2 border-green-500/50 pl-3">
+                    <div className="text-xs font-mono font-bold text-green-400 mb-1 tracking-widest">📈 BULLISH CASE</div>
+                    <p className="text-xs font-mono text-text leading-relaxed">{parsed.bullish}</p>
+                  </div>
+                  <div className="border-l-2 border-red-500/50 pl-3">
+                    <div className="text-xs font-mono font-bold text-red-400 mb-1 tracking-widest">📉 BEARISH CASE</div>
+                    <p className="text-xs font-mono text-text leading-relaxed">{parsed.bearish}</p>
+                  </div>
+                </div>
+              );
+            }
+            return <p className="text-xs font-mono text-text leading-relaxed">{analysis}</p>;
+          })()}
           {!analysis && !analyzing && (
             <p className="text-xs font-mono text-muted">Click Analyze to get a Claude-powered breakdown of the current gamma structure.</p>
           )}

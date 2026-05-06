@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     kingStrike, kingGex, netGex, topPositiveFlow, topNegativeFlow,
   } = req.body;
 
-  const prompt = `You are a professional options gamma exposure (GEX) analyst. Analyze the data below and write a sharp, 3-4 sentence trading analysis for ${ticker}. Focus on: what the gamma environment means for price behavior today, the most important levels to watch, and any notable flow signals. Use specific dollar levels. Be direct and actionable — no filler.
+  const prompt = `You are a professional options gamma exposure (GEX) analyst. Analyze the data below for ${ticker} and return your analysis as a JSON object with exactly these three keys. Be sharp, direct, and use specific dollar levels — no filler.
 
 ${ticker} @ $${Number(price).toFixed(2)}
 Gamma flip: ${flipPoint ? `$${flipPoint} — price is ${price > flipPoint ? `$${(price - flipPoint).toFixed(0)} ABOVE flip (positive gamma regime, moves dampened)` : `$${(flipPoint - price).toFixed(0)} BELOW flip (negative gamma regime, moves amplified)`}` : "not identified"}
@@ -21,7 +21,14 @@ Call walls (0DTE top OI): ${callWalls?.slice(0, 3).map((w) => `$${w.strike}`).jo
 Put walls (0DTE top OI): ${putWalls?.slice(0, 3).map((w) => `$${w.strike}`).join(", ") || "none"}
 Max pain: ${maxPain ? `$${maxPain}` : "N/A"}
 ${topPositiveFlow ? `Strongest call flow today: ${topPositiveFlow}` : ""}
-${topNegativeFlow ? `Strongest put flow today: ${topNegativeFlow}` : ""}`;
+${topNegativeFlow ? `Strongest put flow today: ${topNegativeFlow}` : ""}
+
+Return ONLY valid JSON, no extra text:
+{
+  "overall": "2-3 sentences on the current gamma environment — regime, dominant level, what it means for price behavior today",
+  "bullish": "1-2 sentences on the bullish case — what levels to reclaim, what would confirm upside",
+  "bearish": "1-2 sentences on the bearish case — what breaks would open downside, key support levels"
+}`;
 
   try {
     const upstream = await fetch("https://api.anthropic.com/v1/messages", {
@@ -33,7 +40,7 @@ ${topNegativeFlow ? `Strongest put flow today: ${topNegativeFlow}` : ""}`;
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 400,
+        max_tokens: 600,
         messages: [{ role: "user", content: prompt }],
       }),
     });
