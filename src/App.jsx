@@ -8,6 +8,7 @@ import IntervalMapPage from "./components/IntervalMapPage";
 import ZeroDTEPage from "./components/ZeroDTEPage";
 import ComparePage0DTE from "./components/ComparePage0DTE";
 import CompareGEXPage from "./components/CompareGEXPage";
+import FlowPage from "./components/FlowPage";
 
 export default function App() {
   const [ticker, setTicker] = useState("SPY");
@@ -54,6 +55,7 @@ export default function App() {
         {page === "Exposure" && <ExposurePage ticker={ticker} quote={quote} />}
         {page === "Map" && <IntervalMapPage ticker={ticker} quote={quote} />}
 {page === "Compare GEX" && <CompareGEXPage />}
+        {page === "Flow" && <FlowPage ticker={ticker} quote={quote} />}
       </main>
     </div>
   );

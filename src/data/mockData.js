@@ -200,6 +200,45 @@ export async function fetchGEXMatrix(ticker, price) {
   return { strikes, expirations, cells, callWalls, putWalls, maxPain };
 }
 
+// ─── UNUSUAL FLOW ────────────────────────────────────────────────────────────
+export async function fetchUnusualFlow(ticker) {
+  const allExps = await fetchExpirations(ticker);
+  const expirations = allExps.slice(0, 6);
+
+  const chains = await Promise.all(
+    expirations.map((exp) => fetchChain(ticker, exp, 0).catch(() => null))
+  );
+
+  const rows = [];
+  chains.forEach((chain, i) => {
+    if (!chain) return;
+    const exp = expirations[i];
+    const all = [
+      ...chain.calls.map((o) => ({ ...o, type: "call" })),
+      ...chain.puts.map((o) => ({ ...o, type: "put" })),
+    ];
+    all.forEach((o) => {
+      if (!o.volume || o.volume < 10 || o.mid <= 0) return;
+      const premium = Math.round(o.volume * o.mid * 100);
+      const volOI = o.oi > 0 ? o.volume / o.oi : o.volume;
+      rows.push({
+        type: o.type,
+        strike: o.strike,
+        exp,
+        volume: o.volume,
+        oi: o.oi,
+        volOI: parseFloat(volOI.toFixed(2)),
+        mid: o.mid,
+        premium,
+        iv: o.iv,
+        dte: chain.dte,
+      });
+    });
+  });
+
+  return rows.sort((a, b) => b.premium - a.premium);
+}
+
 // ─── 0DTE POSITIONS ──────────────────────────────────────────────────────────
 export async function fetchZeroDTEPositions() {
   return [];
