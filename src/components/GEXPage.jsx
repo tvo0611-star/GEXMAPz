@@ -258,6 +258,13 @@ export default function GEXPage({ ticker, quote }) {
     const topPos = [...flowByStrike].sort((a, b) => b.flow - a.flow).slice(0, 3).filter((s) => s.flow > 0).map((s) => `$${s.strike}`).join(", ");
     const topNeg = [...flowByStrike].sort((a, b) => a.flow - b.flow).slice(0, 3).filter((s) => s.flow < 0).map((s) => `$${s.strike}`).join(", ");
 
+    const vannaByStrike = matrix.strikes.map((strike) => ({
+      strike,
+      vanna: matrix.expirations.reduce((sum, exp) => sum + (matrix.cells[strike]?.[exp]?.vannaGex ?? 0), 0),
+    }));
+    const topPosVanna = [...vannaByStrike].sort((a, b) => b.vanna - a.vanna).slice(0, 3).filter((s) => s.vanna > 0).map((s) => `$${s.strike}`).join(", ");
+    const topNegVanna = [...vannaByStrike].sort((a, b) => a.vanna - b.vanna).slice(0, 3).filter((s) => s.vanna < 0).map((s) => `$${s.strike}`).join(", ");
+
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -272,8 +279,12 @@ export default function GEXPage({ ticker, quote }) {
           kingStrike,
           kingGex: fmtVal(totalGEXByStrike[kingStrike] ?? 0),
           netGex: totalValue,
+          negGexDepth,
+          totalCharmBias,
           topPositiveFlow: topPos || null,
           topNegativeFlow: topNeg || null,
+          topPositiveVanna: topPosVanna || null,
+          topNegativeVanna: topNegVanna || null,
         }),
       });
       const data = await res.json();
@@ -442,21 +453,23 @@ export default function GEXPage({ ticker, quote }) {
           {analysis && !analyzing && (() => {
             let parsed = null;
             try { parsed = JSON.parse(analysis); } catch {}
-            if (parsed?.overall) {
+            if (parsed?.regime) {
+              const sections = [
+                { key: "regime",         label: "REGIME",             color: "border-accent/40 text-accent" },
+                { key: "keyLevel",       label: "KEY LEVEL",          color: "border-yellow-400/50 text-yellow-300" },
+                { key: "intradayLean",   label: "INTRADAY LEAN",      color: "border-blue-400/50 text-blue-300" },
+                { key: "setupAboveFlip", label: "SETUP — ABOVE FLIP", color: "border-green-500/50 text-green-400" },
+                { key: "setupBelowFlip", label: "SETUP — BELOW FLIP", color: "border-red-500/50 text-red-400" },
+                { key: "volWatch",       label: "VOL WATCH (VANNA)",  color: "border-purple-400/50 text-purple-300" },
+              ];
               return (
                 <div className="space-y-3">
-                  <div className="border-l-2 border-accent/40 pl-3">
-                    <div className="text-xs font-mono font-bold text-accent mb-1 tracking-widest">📊 OVERALL LOOK</div>
-                    <p className="text-xs font-mono text-text leading-relaxed">{parsed.overall}</p>
-                  </div>
-                  <div className="border-l-2 border-green-500/50 pl-3">
-                    <div className="text-xs font-mono font-bold text-green-400 mb-1 tracking-widest">📈 BULLISH CASE</div>
-                    <p className="text-xs font-mono text-text leading-relaxed">{parsed.bullish}</p>
-                  </div>
-                  <div className="border-l-2 border-red-500/50 pl-3">
-                    <div className="text-xs font-mono font-bold text-red-400 mb-1 tracking-widest">📉 BEARISH CASE</div>
-                    <p className="text-xs font-mono text-text leading-relaxed">{parsed.bearish}</p>
-                  </div>
+                  {sections.map(({ key, label, color }) => parsed[key] && (
+                    <div key={key} className={`border-l-2 pl-3 ${color.split(" ")[0]}`}>
+                      <div className={`text-xs font-mono font-bold mb-1 tracking-widest ${color.split(" ")[1]}`}>{label}</div>
+                      <p className="text-xs font-mono text-text leading-relaxed">{parsed[key]}</p>
+                    </div>
+                  ))}
                 </div>
               );
             }
