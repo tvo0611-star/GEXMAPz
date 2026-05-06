@@ -308,9 +308,24 @@ export default function ExposurePage({ ticker, quote }) {
     return matrix.expirations.reduce((sum, exp) => sum + (matrix.cells[strike]?.[exp]?.flowGex ?? 0), 0);
   });
 
-  const values = view === "flow" ? flowValues : gexValues;
-  const chartTitle = `${ticker} — Net ${view === "flow" ? "Flow " : ""}Gamma Exposure By Strike`;
-  const valueKey = view === "flow" ? "flowGex" : "gex";
+  const vannaValues = strikes.map((strike) => {
+    if (scope === "0dte") return matrix.cells[strike]?.[today]?.vannaGex ?? 0;
+    return matrix.expirations.reduce((sum, exp) => sum + (matrix.cells[strike]?.[exp]?.vannaGex ?? 0), 0);
+  });
+
+  const charmValues = strikes.map((strike) => {
+    if (scope === "0dte") return matrix.cells[strike]?.[today]?.charmGex ?? 0;
+    return matrix.expirations.reduce((sum, exp) => sum + (matrix.cells[strike]?.[exp]?.charmGex ?? 0), 0);
+  });
+
+  const values = view === "flow" ? flowValues : view === "vanna" ? vannaValues : view === "charm" ? charmValues : gexValues;
+  const chartTitle = {
+    gex: `${ticker} — Net Gamma Exposure By Strike`,
+    flow: `${ticker} — Net Flow Gamma Exposure By Strike`,
+    vanna: `${ticker} — Vanna Exposure By Strike (dDelta/dVol)`,
+    charm: `${ticker} — Charm Exposure By Strike (dDelta/dt, daily)`,
+  }[view];
+  const valueKey = view === "flow" ? "flowGex" : view === "vanna" ? "vannaGex" : view === "charm" ? "charmGex" : "gex";
 
   // Find the best "hour ago" snapshot
   const hourAgoInfo = (() => {
@@ -341,7 +356,7 @@ export default function ExposurePage({ ticker, quote }) {
       {/* Controls */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <div className="flex gap-1">
-          {[{ id: "gex", label: "GEX" }, { id: "flow", label: "Flow GEX" }].map((v) => (
+          {[{ id: "gex", label: "GEX" }, { id: "flow", label: "Flow GEX" }, { id: "vanna", label: "Vanna" }, { id: "charm", label: "Charm" }].map((v) => (
             <button key={v.id} onClick={() => setView(v.id)}
               className={clsx("px-3 py-1.5 rounded text-xs font-mono transition-all",
                 view === v.id ? "bg-accent/10 text-accent border border-accent/30"
@@ -372,10 +387,12 @@ export default function ExposurePage({ ticker, quote }) {
         </div>
         <div className="flex items-center gap-3 ml-2 text-xs font-mono text-muted flex-wrap">
           <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded-sm bg-green-500/70" /> Positive GEX
+            <span className="inline-block w-3 h-3 rounded-sm bg-green-500/70" />
+            {view === "vanna" ? "Buy pressure (vol up)" : view === "charm" ? "Buy drift (time)" : "Positive"}
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded-sm bg-purple-500/70" /> Negative GEX
+            <span className="inline-block w-3 h-3 rounded-sm bg-purple-500/70" />
+            {view === "vanna" ? "Sell pressure (vol up)" : view === "charm" ? "Sell drift (time)" : "Negative"}
           </span>
           <span className="flex items-center gap-1">
             <span className="inline-block w-4 border-t border-dashed border-accent" /> Current price

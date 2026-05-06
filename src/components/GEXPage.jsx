@@ -295,6 +295,8 @@ export default function GEXPage({ ticker, quote }) {
   let totalValue = 0;
   let flipPoint = null;
   let maxAbsCell = 1;
+  let negGexDepth = 0;
+  let totalCharmBias = 0;
   if (matrix) {
     matrix.strikes.forEach((strike) => {
       matrix.expirations.forEach((exp) => {
@@ -302,7 +304,14 @@ export default function GEXPage({ ticker, quote }) {
         const v = getCellValue(cell, view);
         totalValue += v;
         if (Math.abs(v) > maxAbsCell) maxAbsCell = Math.abs(v);
+        totalCharmBias += cell.charmGex ?? 0;
       });
+    });
+
+    // Negative GEX depth: sum of GEX at strikes where per-strike total GEX < 0
+    matrix.strikes.forEach((strike) => {
+      const strikeGex = matrix.expirations.reduce((s, exp) => s + (matrix.cells[strike]?.[exp]?.gex ?? 0), 0);
+      if (strikeGex < 0) negGexDepth += strikeGex;
     });
 
     if (view === "gex" || view === "vex") {
@@ -374,7 +383,7 @@ export default function GEXPage({ ticker, quote }) {
 
       {/* Stats row */}
       {quote && (
-        <div className="grid grid-cols-2 sm:grid-cols-7 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-9 gap-3 mb-4">
           <StatCard
             label={view === "gex" ? "NET GEX" : view === "vex" ? "ABS GEX" : view === "flowGex" ? "FLOW GEX" : view === "callOI" ? "CALL OI" : view === "putOI" ? "PUT OI" : "NET OI"}
             value={fmtVal(totalValue)}
@@ -391,6 +400,18 @@ export default function GEXPage({ ticker, quote }) {
           <StatCard label="CALL WALLS" value={matrix?.callWalls?.length ? matrix.callWalls.map((w) => `$${w.strike}`).join(", ") : "—"} sub="Top 3 0DTE call OI" color="text-green-300" />
           <StatCard label="PUT WALLS" value={matrix?.putWalls?.length ? matrix.putWalls.map((w) => `$${w.strike}`).join(", ") : "—"} sub="Top 3 0DTE put OI" color="text-red-300" />
           <StatCard label="MAX PAIN" value={matrix?.maxPain ? `$${matrix.maxPain.toFixed(1)}` : "—"} sub="Minimizes expiring worthless" color="text-white" />
+          <StatCard
+            label="NEG GEX DEPTH"
+            value={negGexDepth === 0 ? "—" : fmtVal(negGexDepth)}
+            color={negGexDepth < -1e8 ? "text-red-400" : negGexDepth < 0 ? "text-orange-400" : "text-green-400"}
+            sub={negGexDepth === 0 ? "No neg-gamma strikes" : negGexDepth < -5e8 ? "Moves amplified" : "Mild neg gamma"}
+          />
+          <StatCard
+            label="CHARM BIAS"
+            value={totalCharmBias === 0 ? "—" : fmtVal(totalCharmBias)}
+            color={totalCharmBias >= 0 ? "text-green-400" : "text-red-400"}
+            sub={totalCharmBias >= 0 ? "Dealers buy into close" : "Dealers sell into close"}
+          />
         </div>
       )}
 

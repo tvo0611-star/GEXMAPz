@@ -143,13 +143,15 @@ export async function fetchGEXMatrix(ticker, price) {
     return best === null || pain < best.pain ? { strike, pain } : best;
   }, null)?.strike ?? null;
 
+  const msPerYear = 365.25 * 24 * 3600 * 1000;
+
   const cells = {};
   strikes.forEach((strike) => {
     cells[strike] = {};
     expirations.forEach((exp, i) => {
       const chain = chains[i];
       if (!chain) {
-        cells[strike][exp] = { gex: 0, flowGex: 0, callOI: 0, putOI: 0, callVolume: 0, putVolume: 0 };
+        cells[strike][exp] = { gex: 0, flowGex: 0, vannaGex: 0, charmGex: 0, callOI: 0, putOI: 0, callVolume: 0, putVolume: 0 };
         return;
       }
 
@@ -168,7 +170,30 @@ export async function fetchGEXMatrix(ticker, price) {
       const putFlowGEX = put ? put.gamma * putVolume * price * price * 0.01 : 0;
       const flowGex = parseFloat((callFlowGEX - putFlowGEX).toFixed(0));
 
-      cells[strike][exp] = { gex, flowGex, callOI, putOI, callVolume, putVolume, callIV: call?.iv ?? 0, putIV: put?.iv ?? 0 };
+      // Vanna: dDelta/dVol — dealers' delta hedge shift per 1-vol-point move
+      // Charm: dDelta/dt  — dealers' delta hedge drift per trading day
+      // Using: vanna = -gamma * S * sqrt(T) * d2
+      //        charm = gamma * S * iv * d2 / (2 * sqrt(T)) / 252
+      const T = Math.max(1 / (365 * 24), (new Date(exp) - new Date()) / msPerYear);
+      const sqrtT = Math.sqrt(T);
+
+      const d2 = (iv, g) => {
+        if (!iv || !g) return 0;
+        return (Math.log(price / strike) + 0.5 * iv * iv * T) / (iv * sqrtT) - iv * sqrtT;
+      };
+
+      const callD2 = d2(call?.iv, call?.gamma);
+      const putD2  = d2(put?.iv,  put?.gamma);
+
+      const callVanna = call?.gamma ? -call.gamma * price * sqrtT * callD2 : 0;
+      const putVanna  = put?.gamma  ? -put.gamma  * price * sqrtT * putD2  : 0;
+      const vannaGex  = parseFloat(((callVanna * callOI - putVanna * putOI) * price * 100).toFixed(0));
+
+      const callCharm = call?.gamma && call?.iv ? call.gamma * price * call.iv * callD2 / (2 * sqrtT) / 252 : 0;
+      const putCharm  = put?.gamma  && put?.iv  ? put.gamma  * price * put.iv  * putD2  / (2 * sqrtT) / 252 : 0;
+      const charmGex  = parseFloat(((callCharm * callOI - putCharm * putOI) * price * 100).toFixed(0));
+
+      cells[strike][exp] = { gex, flowGex, vannaGex, charmGex, callOI, putOI, callVolume, putVolume, callIV: call?.iv ?? 0, putIV: put?.iv ?? 0 };
     });
   });
 
