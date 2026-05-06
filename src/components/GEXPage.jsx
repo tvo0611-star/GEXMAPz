@@ -178,6 +178,8 @@ export default function GEXPage({ ticker, quote }) {
   const initialLoadRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
   const prevTickerRef = useRef(ticker);
+  // Ring buffer: [{ timestamp, totalGex }]
+  const gexHistoryRef = useRef([]);
 
   useEffect(() => {
     if (ticker !== prevTickerRef.current) {
@@ -195,7 +197,17 @@ export default function GEXPage({ ticker, quote }) {
       if (initialLoadRef.current) setLoading(true);
       try {
         const data = await fetchGEXMatrix(ticker, quote.price);
-        if (active) setMatrix(data);
+        if (active) {
+          setMatrix(data);
+          // Snapshot total GEX (all expirations, all strikes)
+          const now = Date.now();
+          const total = data.strikes.reduce((sum, strike) =>
+            sum + data.expirations.reduce((s2, exp) => s2 + (data.cells[strike]?.[exp]?.gex ?? 0), 0), 0);
+          gexHistoryRef.current = [
+            ...gexHistoryRef.current.filter((s) => now - s.timestamp < 95 * 60 * 1000),
+            { timestamp: now, totalGex: total },
+          ];
+        }
       } catch (error) {
         console.error("GEX refresh failed:", error);
       } finally {
@@ -211,6 +223,7 @@ export default function GEXPage({ ticker, quote }) {
     return () => {
       active = false;
       clearInterval(interval);
+      gexHistoryRef.current = [];
     };
   }, [ticker, quote?.price]);
 
@@ -317,6 +330,25 @@ export default function GEXPage({ ticker, quote }) {
     });
   }
 
+  // Compute 1h change for NET GEX
+  const gexChangeLabel = (() => {
+    const history = gexHistoryRef.current;
+    if (history.length < 2) return null;
+    const now = Date.now();
+    const eligible = history.slice(0, -1).filter((s) => now - s.timestamp > 60 * 1000);
+    if (!eligible.length) return null;
+    const oneHourAgo = now - 60 * 60 * 1000;
+    const best = eligible.reduce((a, b) =>
+      Math.abs(a.timestamp - oneHourAgo) < Math.abs(b.timestamp - oneHourAgo) ? a : b
+    );
+    if (Math.abs(best.totalGex) < 1) return null;
+    const pct = ((totalValue - best.totalGex) / Math.abs(best.totalGex)) * 100;
+    if (Math.abs(pct) < 0.5) return null;
+    const ageMin = Math.round((now - best.timestamp) / 60000);
+    const timeLabel = ageMin >= 55 ? "1h ago" : `${ageMin}m ago`;
+    return { pct, timeLabel };
+  })();
+
   // Stable array for ChartPanel — only rebuilds when matrix changes, not on tooltip/hover
   const gexLevels = useMemo(() => {
     if (!matrix) return [];
@@ -348,7 +380,11 @@ export default function GEXPage({ ticker, quote }) {
             label={view === "gex" ? "NET GEX" : view === "vex" ? "ABS GEX" : view === "flowGex" ? "FLOW GEX" : view === "callOI" ? "CALL OI" : view === "putOI" ? "PUT OI" : "NET OI"}
             value={fmtVal(totalValue)}
             color={totalValue >= 0 ? "text-green-400" : "text-blue-400"}
-            sub={view === "gex" ? (totalValue >= 0 ? "Dealers long Γ" : "Dealers short Γ") : view === "vex" ? "Unsigned gamma exposure" : view === "flowGex" ? (totalValue >= 0 ? "Call flow dominant" : "Put flow dominant") : view === "callOI" ? "Call open interest" : view === "putOI" ? "Put open interest" : "Call OI minus Put OI"}
+            sub={
+              gexChangeLabel
+                ? <span className={gexChangeLabel.pct >= 0 ? "text-green-400" : "text-red-400"}>{gexChangeLabel.pct >= 0 ? "+" : ""}{gexChangeLabel.pct.toFixed(1)}% vs {gexChangeLabel.timeLabel}</span>
+                : view === "gex" ? (totalValue >= 0 ? "Dealers long Γ" : "Dealers short Γ") : view === "vex" ? "Unsigned gamma exposure" : view === "flowGex" ? (totalValue >= 0 ? "Call flow dominant" : "Put flow dominant") : view === "callOI" ? "Call open interest" : view === "putOI" ? "Put open interest" : "Call OI minus Put OI"
+            }
           />
           <StatCard label="SPOT PRICE" value={`$${price.toFixed(2)}`} sub={`ATM: $${atm}`} color="text-accent" />
           <StatCard label="GAMMA FLIP" value={view === "gex" || view === "vex" ? (flipPoint ? `$${flipPoint}` : "—") : "—"} sub={matrix ? `Near exp: ${matrix.expirations[0]}` : "Zero-crossing level"} color="text-yellow-300" />
