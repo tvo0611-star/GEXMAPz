@@ -452,22 +452,83 @@ export default function GEXPage({ ticker, quote }) {
           )}
           {analysis && !analyzing && (() => {
             let parsed = null;
-            try { parsed = JSON.parse(analysis); } catch {}
+            try {
+              // strip markdown code fences if model wrapped the JSON
+              const cleaned = analysis.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+              parsed = JSON.parse(cleaned);
+            } catch {}
+
             if (parsed?.regime) {
               const sections = [
-                { key: "regime",         label: "REGIME",             color: "border-accent/40 text-accent" },
-                { key: "keyLevel",       label: "KEY LEVEL",          color: "border-yellow-400/50 text-yellow-300" },
-                { key: "intradayLean",   label: "INTRADAY LEAN",      color: "border-blue-400/50 text-blue-300" },
-                { key: "setupAboveFlip", label: "SETUP — ABOVE FLIP", color: "border-green-500/50 text-green-400" },
-                { key: "setupBelowFlip", label: "SETUP — BELOW FLIP", color: "border-red-500/50 text-red-400" },
-                { key: "volWatch",       label: "VOL WATCH (VANNA)",  color: "border-purple-400/50 text-purple-300" },
+                {
+                  key: "regime",
+                  icon: "◈",
+                  label: "REGIME",
+                  bg: "bg-accent/5 border-accent/20",
+                  labelColor: "text-accent",
+                  iconBg: "bg-accent/10",
+                },
+                {
+                  key: "keyLevel",
+                  icon: "⊕",
+                  label: "KEY LEVEL",
+                  bg: "bg-yellow-400/5 border-yellow-400/20",
+                  labelColor: "text-yellow-300",
+                  iconBg: "bg-yellow-400/10",
+                },
+                {
+                  key: "intradayLean",
+                  icon: "↝",
+                  label: "INTRADAY LEAN",
+                  bg: "bg-blue-400/5 border-blue-400/20",
+                  labelColor: "text-blue-300",
+                  iconBg: "bg-blue-400/10",
+                },
+                {
+                  key: "setupAboveFlip",
+                  icon: "▲",
+                  label: "SETUP — ABOVE FLIP",
+                  bg: "bg-green-500/5 border-green-500/20",
+                  labelColor: "text-green-400",
+                  iconBg: "bg-green-500/10",
+                },
+                {
+                  key: "setupBelowFlip",
+                  icon: "▼",
+                  label: "SETUP — BELOW FLIP",
+                  bg: "bg-red-500/5 border-red-500/20",
+                  labelColor: "text-red-400",
+                  iconBg: "bg-red-500/10",
+                },
+                {
+                  key: "volWatch",
+                  icon: "〜",
+                  label: "VOL WATCH  ·  VANNA",
+                  bg: "bg-purple-400/5 border-purple-400/20",
+                  labelColor: "text-purple-300",
+                  iconBg: "bg-purple-400/10",
+                },
               ];
+
+              // bold $NNN price levels and standalone numbers with B/M suffix
+              const highlight = (text) => {
+                const parts = text.split(/(\$\d+(?:\.\d+)?|\b\d+(?:\.\d+)?[BM]\b)/g);
+                return parts.map((part, i) =>
+                  /^\$\d|^\d+(?:\.\d+)?[BM]$/.test(part)
+                    ? <strong key={i} className="text-text font-semibold">{part}</strong>
+                    : part
+                );
+              };
+
               return (
-                <div className="space-y-3">
-                  {sections.map(({ key, label, color }) => parsed[key] && (
-                    <div key={key} className={`border-l-2 pl-3 ${color.split(" ")[0]}`}>
-                      <div className={`text-xs font-mono font-bold mb-1 tracking-widest ${color.split(" ")[1]}`}>{label}</div>
-                      <p className="text-xs font-mono text-text leading-relaxed">{parsed[key]}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                  {sections.map(({ key, icon, label, bg, labelColor, iconBg }) => parsed[key] && (
+                    <div key={key} className={`rounded-lg border p-3 ${bg} ${key === "regime" || key === "volWatch" ? "sm:col-span-2" : ""}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`text-xs font-mono font-bold w-5 h-5 rounded flex items-center justify-center ${iconBg} ${labelColor}`}>{icon}</span>
+                        <span className={`text-xs font-mono font-bold tracking-widest ${labelColor}`}>{label}</span>
+                      </div>
+                      <p className="text-xs font-mono text-text/90 leading-relaxed">{highlight(parsed[key])}</p>
                     </div>
                   ))}
                 </div>
@@ -476,7 +537,7 @@ export default function GEXPage({ ticker, quote }) {
             return <p className="text-xs font-mono text-text leading-relaxed">{analysis}</p>;
           })()}
           {!analysis && !analyzing && (
-            <p className="text-xs font-mono text-muted">Click Analyze to get a Claude-powered breakdown of the current gamma structure.</p>
+            <p className="text-xs font-mono text-muted">Click Analyze to get a GEX-based trading plan for today.</p>
           )}
         </div>
       )}
