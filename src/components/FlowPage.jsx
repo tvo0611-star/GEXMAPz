@@ -43,6 +43,14 @@ const FLAG_STYLES = [
   { key: "highVol",    label: "HIGH VOL", cls: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
 ];
 
+function sentiment(callPrem, putPrem) {
+  if (callPrem === 0 && putPrem === 0) return null;
+  const ratio = putPrem / (callPrem || 1);
+  if (ratio < 0.7)  return { label: "BULLISH",  cls: "bg-green/10 text-green border-green/30" };
+  if (ratio > 1.3)  return { label: "BEARISH",  cls: "bg-red/10 text-red border-red/30" };
+  return              { label: "NEUTRAL",  cls: "bg-muted/10 text-muted border-border" };
+}
+
 const fmtExp = (exp) => {
   const [, m, d] = exp.split("-");
   return `${parseInt(m)}/${parseInt(d)}`;
@@ -89,6 +97,9 @@ export default function FlowPage({ ticker }) {
         <div className="flex items-center gap-2">
           <Zap size={14} className="text-accent" />
           <span className="font-mono text-sm font-semibold text-text">Unusual Flow — {ticker}</span>
+          {scanned && (() => { const s = sentiment(totalCallPrem, totalPutPrem); return s ? (
+            <span className={clsx("font-mono text-[10px] font-bold px-2 py-0.5 rounded border", s.cls)}>{s.label}</span>
+          ) : null; })()}
         </div>
         <button
           onClick={scan}
