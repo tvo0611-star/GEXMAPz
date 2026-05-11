@@ -392,6 +392,35 @@ export default function GEXPage({ ticker, quote }) {
         />
       )}
 
+      {/* Sentiment indicator */}
+      {quote && matrix && (() => {
+        let label, cls, reason;
+        if (flipPoint) {
+          if (price > flipPoint) {
+            label = "BULLISH"; cls = "bg-green/10 text-green border-green/30";
+            reason = `price above gamma flip ($${flipPoint})`;
+          } else {
+            label = "BEARISH"; cls = "bg-red/10 text-red border-red/30";
+            reason = `price below gamma flip ($${flipPoint})`;
+          }
+        } else if (totalValue > 0) {
+          label = "BULLISH"; cls = "bg-green/10 text-green border-green/30";
+          reason = "net positive GEX regime";
+        } else if (totalValue < 0) {
+          label = "BEARISH"; cls = "bg-red/10 text-red border-red/30";
+          reason = "net negative GEX regime";
+        } else {
+          label = "NEUTRAL"; cls = "bg-muted/10 text-muted border-border";
+          reason = "no clear gamma signal";
+        }
+        return (
+          <div className="flex items-center gap-2 mb-3">
+            <span className={clsx("font-mono text-xs font-bold px-3 py-1 rounded border", cls)}>{label}</span>
+            <span className="font-mono text-xs text-muted">{ticker} — {reason}</span>
+          </div>
+        );
+      })()}
+
       {/* Stats row */}
       {quote && (
         <div className="grid grid-cols-2 sm:grid-cols-9 gap-3 mb-4">
