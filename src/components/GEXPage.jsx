@@ -1,8 +1,9 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
-import { fetchGEXMatrix } from "../data/mockData";
+import { fetchGEXMatrix, fetchIVRank } from "../data/mockData";
 import { StatCard, LoadingSpinner, EmptyState } from "./UI";
 import ChartPanel from "./ChartPanel";
 import { clsx } from "clsx";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 
 // Black-Scholes gamma: how much gamma a single contract contributes at spot S
 function bsGamma(S, K, sigma, tau) {
@@ -174,10 +175,17 @@ export default function GEXPage({ ticker, quote }) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState(null);
+  const [ivRank, setIvRank] = useState(null);
+  const [skewOpen, setSkewOpen] = useState(false);
+  const [skewExp, setSkewExp] = useState(null);
+  const [alertsEnabled, setAlertsEnabled] = useState(false);
+  const [marketTick, setMarketTick] = useState(0);
   const containerRef = useRef(null);
   const initialLoadRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
   const prevTickerRef = useRef(ticker);
+  const prevPriceRef = useRef(null);
+  const alertedRef = useRef(new Set());
   // Ring buffer: [{ timestamp, totalGex }]
   const gexHistoryRef = useRef([]);
 
@@ -199,6 +207,7 @@ export default function GEXPage({ ticker, quote }) {
         const data = await fetchGEXMatrix(ticker, quote.price);
         if (active) {
           setMatrix(data);
+          setSkewExp((prev) => prev ?? data.expirations[0]);
           // Snapshot total GEX (all expirations, all strikes)
           const now = Date.now();
           const total = data.strikes.reduce((sum, strike) =>
@@ -245,6 +254,61 @@ export default function GEXPage({ ticker, quote }) {
 
   // Reset analysis when ticker changes
   useEffect(() => { setAnalysis(null); }, [ticker]);
+
+  // IV Rank — fetch once per ticker change (slow, independent of matrix polling)
+  useEffect(() => {
+    if (!ticker) return;
+    setIvRank(null);
+    fetchIVRank(ticker).then(setIvRank).catch(() => {});
+  }, [ticker]);
+
+  // Reset alerts when ticker changes
+  useEffect(() => {
+    alertedRef.current = new Set();
+    prevPriceRef.current = null;
+  }, [ticker]);
+
+  // Price alerts
+  useEffect(() => {
+    if (!alertsEnabled || !quote || !matrix) return;
+    const cur = quote.price;
+    const prev = prevPriceRef.current;
+    prevPriceRef.current = cur;
+    if (prev === null) return;
+
+    const notify = (msg) => {
+      if (Notification.permission === "granted") new Notification("GEXmapz", { body: msg });
+    };
+
+    if (flipPoint) {
+      const dir = prev > flipPoint ? "above" : "below";
+      const crossed = (prev > flipPoint && cur <= flipPoint) || (prev < flipPoint && cur >= flipPoint);
+      if (crossed && !alertedRef.current.has(`flip-${dir}`)) {
+        alertedRef.current.add(`flip-${dir}`);
+        notify(`${ticker} crossed gamma flip at $${flipPoint}`);
+      }
+    }
+    matrix.callWalls.forEach((w) => {
+      const key = `cw-${w.strike}`;
+      if (!alertedRef.current.has(key) && Math.abs(cur - w.strike) / w.strike < 0.003) {
+        alertedRef.current.add(key);
+        notify(`${ticker} approaching call wall at $${w.strike}`);
+      }
+    });
+    matrix.putWalls.forEach((w) => {
+      const key = `pw-${w.strike}`;
+      if (!alertedRef.current.has(key) && Math.abs(cur - w.strike) / w.strike < 0.003) {
+        alertedRef.current.add(key);
+        notify(`${ticker} approaching put wall at $${w.strike}`);
+      }
+    });
+  }, [quote?.price, alertsEnabled]);
+
+  // 0DTE market timer — tick every minute
+  useEffect(() => {
+    const t = setInterval(() => setMarketTick((n) => n + 1), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   const handleAnalyze = async () => {
     if (!matrix || !quote) return;
@@ -377,6 +441,38 @@ export default function GEXPage({ ticker, quote }) {
     }));
   }, [matrix]);
 
+  // Market hours progress (ET)
+  const marketProgress = useMemo(() => {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York", hour: "numeric", minute: "numeric", hour12: false,
+    }).formatToParts(now);
+    const h = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0");
+    const m = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0");
+    const totalMin = h * 60 + m;
+    const open = 570; const close = 960;
+    if (totalMin < open) return { status: "pre", pct: 0, label: "Pre-market" };
+    if (totalMin >= close) return { status: "closed", pct: 100, label: "Market closed" };
+    const pct = ((totalMin - open) / (close - open)) * 100;
+    const rem = close - totalMin;
+    const label = rem >= 60 ? `${Math.floor(rem / 60)}h ${rem % 60}m to close` : `${rem}m to close`;
+    return { status: "open", pct, label };
+  }, [marketTick]);
+
+  // IV skew data for selected expiration
+  const skewData = useMemo(() => {
+    if (!matrix || !skewExp) return [];
+    return matrix.strikes
+      .filter((s) => price === 0 || (s >= price * 0.82 && s <= price * 1.18))
+      .map((strike) => ({
+        strike,
+        callIV: parseFloat(((matrix.cells[strike]?.[skewExp]?.callIV ?? 0) * 100).toFixed(1)),
+        putIV:  parseFloat(((matrix.cells[strike]?.[skewExp]?.putIV  ?? 0) * 100).toFixed(1)),
+      }))
+      .filter((d) => d.callIV > 0 || d.putIV > 0)
+      .sort((a, b) => a.strike - b.strike);
+  }, [matrix, skewExp]);
+
   return (
     <div className="p-4 max-w-screen-2xl mx-auto">
       {/* Price chart with GEX levels */}
@@ -421,9 +517,23 @@ export default function GEXPage({ ticker, quote }) {
         );
       })()}
 
+      {/* 0DTE market progress */}
+      {quote && (
+        <div className="flex items-center gap-3 mb-3">
+          <span className="font-mono text-xs text-muted shrink-0">{marketProgress.label}</span>
+          <div className="flex-1 h-1.5 bg-surface border border-border rounded-full overflow-hidden">
+            <div
+              className={clsx("h-full rounded-full transition-all", marketProgress.status === "open" ? "bg-accent" : "bg-muted/30")}
+              style={{ width: `${marketProgress.pct}%` }}
+            />
+          </div>
+          <span className="font-mono text-xs text-muted shrink-0">4:00 PM ET</span>
+        </div>
+      )}
+
       {/* Stats row */}
       {quote && (
-        <div className="grid grid-cols-2 sm:grid-cols-9 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-10 gap-3 mb-4">
           <StatCard
             label={view === "gex" ? "NET GEX" : view === "vex" ? "ABS GEX" : view === "flowGex" ? "FLOW GEX" : view === "callOI" ? "CALL OI" : view === "putOI" ? "PUT OI" : "NET OI"}
             value={fmtVal(totalValue)}
@@ -451,6 +561,12 @@ export default function GEXPage({ ticker, quote }) {
             value={totalCharmBias === 0 ? "—" : fmtVal(totalCharmBias)}
             color={totalCharmBias >= 0 ? "text-green-400" : "text-red-400"}
             sub={totalCharmBias >= 0 ? "Dealers buy into close" : "Dealers sell into close"}
+          />
+          <StatCard
+            label="ATM IV / HV30"
+            value={ivRank ? `${ivRank.currentIV}% / ${ivRank.hv30}%` : "—"}
+            color={ivRank ? (ivRank.currentIV / (ivRank.hv30 || 1) > 1.3 ? "text-red-400" : ivRank.currentIV / (ivRank.hv30 || 1) < 0.8 ? "text-green-400" : "text-yellow-300") : "text-muted"}
+            sub={ivRank ? (ivRank.currentIV / (ivRank.hv30 || 1) > 1.3 ? "IV elevated — sell prem" : ivRank.currentIV / (ivRank.hv30 || 1) < 0.8 ? "IV compressed — buy prem" : "IV fair value") : "Loading…"}
           />
         </div>
       )}
@@ -599,12 +715,37 @@ export default function GEXPage({ ticker, quote }) {
           </div>
         </div>
 
-        <button
-          onClick={() => setInfoOpen((open) => !open)}
-          className="px-3 py-1.5 rounded text-xs font-mono bg-surface border border-border text-muted hover:text-text transition-all"
-        >
-          {infoOpen ? "Hide info" : "Show info"}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setSkewOpen((o) => !o)}
+            className={clsx("px-3 py-1.5 rounded text-xs font-mono transition-all",
+              skewOpen ? "bg-accent/10 text-accent border border-accent/30" : "bg-surface border border-border text-muted hover:text-text"
+            )}
+          >
+            IV Skew
+          </button>
+          <button
+            onClick={async () => {
+              if (!alertsEnabled) {
+                const perm = await Notification.requestPermission();
+                if (perm === "granted") { setAlertsEnabled(true); prevPriceRef.current = null; }
+              } else {
+                setAlertsEnabled(false);
+              }
+            }}
+            className={clsx("px-3 py-1.5 rounded text-xs font-mono transition-all",
+              alertsEnabled ? "bg-yellow-400/10 text-yellow-300 border border-yellow-400/30" : "bg-surface border border-border text-muted hover:text-text"
+            )}
+          >
+            {alertsEnabled ? "Alerts ON" : "Alerts"}
+          </button>
+          <button
+            onClick={() => setInfoOpen((open) => !open)}
+            className="px-3 py-1.5 rounded text-xs font-mono bg-surface border border-border text-muted hover:text-text transition-all"
+          >
+            {infoOpen ? "Hide info" : "Info"}
+          </button>
+        </div>
       </div>
 
       {infoOpen && (
@@ -624,6 +765,50 @@ export default function GEXPage({ ticker, quote }) {
           <div>
             <span className="font-semibold text-text">ATM</span>: the current at-the-money strike is highlighted with an arrow in the strike column.
           </div>
+        </div>
+      )}
+
+      {/* IV Skew chart */}
+      {skewOpen && matrix && (
+        <div className="bg-surface border border-border rounded-lg p-4 mb-3">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <span className="font-mono text-xs font-semibold text-text">IV Skew</span>
+            <div className="flex gap-1 flex-wrap">
+              {matrix.expirations.slice(0, 6).map((exp) => (
+                <button
+                  key={exp}
+                  onClick={() => setSkewExp(exp)}
+                  className={clsx("px-2 py-0.5 rounded text-xs font-mono transition-all",
+                    skewExp === exp ? "bg-accent/10 text-accent border border-accent/30" : "bg-bg border border-border text-muted"
+                  )}
+                >
+                  {exp === new Date().toISOString().split("T")[0] ? "0DTE" : exp.slice(5)}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 ml-auto text-xs font-mono">
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-green inline-block rounded" /> Call IV</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-red inline-block rounded" /> Put IV</span>
+            </div>
+          </div>
+          {skewData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={skewData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+                <XAxis dataKey="strike" tick={{ fontSize: 10, fontFamily: "IBM Plex Mono", fill: "#666" }} tickFormatter={(v) => `$${v}`} />
+                <YAxis tick={{ fontSize: 10, fontFamily: "IBM Plex Mono", fill: "#666" }} tickFormatter={(v) => `${v}%`} width={38} />
+                <Tooltip
+                  formatter={(v, name) => [`${v}%`, name === "callIV" ? "Call IV" : "Put IV"]}
+                  labelFormatter={(l) => `Strike: $${l}`}
+                  contentStyle={{ background: "#0a0a0f", border: "1px solid #1e1e2e", borderRadius: 6, fontSize: 11, fontFamily: "IBM Plex Mono" }}
+                />
+                <ReferenceLine x={price} stroke="#00e5ff" strokeDasharray="3 2" />
+                <Line type="monotone" dataKey="callIV" stroke="#00ff88" strokeWidth={1.5} dot={false} connectNulls />
+                <Line type="monotone" dataKey="putIV"  stroke="#ff4466" strokeWidth={1.5} dot={false} connectNulls />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-xs font-mono text-muted text-center py-8">No IV data for this expiration.</div>
+          )}
         </div>
       )}
 

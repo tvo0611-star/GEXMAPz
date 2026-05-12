@@ -200,6 +200,60 @@ export async function fetchGEXMatrix(ticker, price) {
   return { strikes, expirations, cells, callWalls, putWalls, maxPain };
 }
 
+// ─── IV RANK ─────────────────────────────────────────────────────────────────
+export async function fetchIVRank(ticker) {
+  const end = new Date().toISOString().split("T")[0];
+  const start = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+  const histData = await tradierGet(
+    `/v1/markets/history?symbol=${ticker}&interval=daily&start=${start}&end=${end}`
+  );
+  const days = histData.history?.day ?? [];
+  const list = Array.isArray(days) ? days : [days];
+  if (list.length < 31) return null;
+
+  const closes = list.map((d) => parseFloat(d.close));
+  const returns = [];
+  for (let i = 1; i < closes.length; i++) {
+    returns.push(Math.log(closes[i] / closes[i - 1]));
+  }
+
+  const hvSeries = [];
+  for (let i = 29; i < returns.length; i++) {
+    const w = returns.slice(i - 29, i + 1);
+    const mean = w.reduce((s, r) => s + r, 0) / 30;
+    const variance = w.reduce((s, r) => s + (r - mean) ** 2, 0) / 29;
+    hvSeries.push(Math.sqrt(variance * 252));
+  }
+
+  const hv30 = hvSeries[hvSeries.length - 1] ?? 0;
+  const hvMin = Math.min(...hvSeries);
+  const hvMax = Math.max(...hvSeries);
+
+  const exps = await fetchExpirations(ticker);
+  const lastClose = closes[closes.length - 1];
+  let currentIV = 0;
+  try {
+    const chain = await fetchChain(ticker, exps[0], lastClose, 0.05);
+    const all = [...chain.calls, ...chain.puts].filter((o) => o.iv > 0);
+    const atm = all.reduce(
+      (best, o) => (Math.abs(o.strike - lastClose) < Math.abs(best.strike - lastClose) ? o : best),
+      all[0] ?? { strike: 0, iv: 0 }
+    );
+    currentIV = atm?.iv ?? 0;
+  } catch {}
+
+  const ivRank = hvMax > hvMin
+    ? Math.max(0, Math.min(100, Math.round(((currentIV - hvMin) / (hvMax - hvMin)) * 100)))
+    : 50;
+
+  return {
+    currentIV: parseFloat((currentIV * 100).toFixed(1)),
+    hv30: parseFloat((hv30 * 100).toFixed(1)),
+    ivRank,
+  };
+}
+
 // ─── UNUSUAL FLOW ────────────────────────────────────────────────────────────
 export async function fetchUnusualFlow(ticker) {
   const allExps = await fetchExpirations(ticker);

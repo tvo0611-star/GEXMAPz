@@ -9,6 +9,7 @@ import ZeroDTEPage from "./components/ZeroDTEPage";
 import ComparePage0DTE from "./components/ComparePage0DTE";
 import CompareGEXPage from "./components/CompareGEXPage";
 import FlowPage from "./components/FlowPage";
+import ScannerPage from "./components/ScannerPage";
 
 export default function App() {
   const [ticker, setTicker] = useState("SPY");
@@ -56,6 +57,7 @@ export default function App() {
         {page === "Map" && <IntervalMapPage ticker={ticker} quote={quote} />}
 {page === "Compare GEX" && <CompareGEXPage />}
         {page === "Flow" && <FlowPage ticker={ticker} quote={quote} />}
+        {page === "Scanner" && <ScannerPage />}
       </main>
     </div>
   );
