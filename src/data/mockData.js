@@ -297,3 +297,61 @@ export async function fetchUnusualFlow(ticker) {
 export async function fetchZeroDTEPositions() {
   return [];
 }
+
+// ─── REAL-TIME QUOTE STREAM ───────────────────────────────────────────────────
+// Creates a Tradier WebSocket session and streams live quotes.
+// Returns an unsubscribe function. Falls back gracefully if streaming fails.
+export function subscribeToQuote(ticker, onUpdate) {
+  let ws = null;
+  let active = true;
+  let retryTimeout = null;
+
+  const connect = async () => {
+    if (!active) return;
+    try {
+      const res = await fetch(`${BASE_URL}/v1/markets/events/session`, {
+        method: "POST",
+        headers,
+      });
+      if (!res.ok) throw new Error(`session ${res.status}`);
+      const data = await res.json();
+      const sessionId = data.stream?.sessionid;
+      if (!sessionId) throw new Error("no sessionid");
+
+      ws = new WebSocket("wss://stream.tradier.com/v1/markets/events");
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ symbols: ticker, sessionid: sessionId, linebreak: true, filter: ["quote"] }));
+      };
+      ws.onmessage = (e) => {
+        if (!active) return;
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === "quote" && msg.symbol === ticker) {
+            const last = msg.last ?? msg.bid ?? 0;
+            const prev = msg.prevclose ?? 0;
+            onUpdate({
+              ticker: msg.symbol,
+              price: last,
+              change: prev > 0 ? last - prev : 0,
+              changePct: prev > 0 ? ((last - prev) / prev) * 100 : 0,
+            });
+          }
+        } catch {}
+      };
+      ws.onerror = () => ws?.close();
+      ws.onclose = () => {
+        ws = null;
+        if (active) retryTimeout = setTimeout(connect, 5000);
+      };
+    } catch {
+      if (active) retryTimeout = setTimeout(connect, 5000);
+    }
+  };
+
+  connect();
+  return () => {
+    active = false;
+    clearTimeout(retryTimeout);
+    if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  };
+}

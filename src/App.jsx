@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { fetchQuote } from "./data/mockData";
+import { fetchQuote, subscribeToQuote } from "./data/mockData";
 import { Header } from "./components/UI";
 import ChainPage from "./components/ChainPage";
 import GEXPage from "./components/GEXPage";
@@ -24,20 +24,19 @@ export default function App() {
     if (!ticker) return;
     let active = true;
 
-    const loadQuote = async () => {
-      try {
-        const q = await fetchQuote(ticker);
-        if (active) setQuote(q);
-      } catch (error) {
-        console.error("Quote refresh failed:", error);
-      }
-    };
+    // Initial REST fetch for immediate display
+    fetchQuote(ticker)
+      .then((q) => { if (active) setQuote(q); })
+      .catch((err) => console.error("Initial quote failed:", err));
 
-    loadQuote();
-    const interval = setInterval(loadQuote, 5000);
+    // WebSocket for real-time updates; preserves iv30/hv30 from initial fetch
+    const unsubscribe = subscribeToQuote(ticker, (update) => {
+      if (active) setQuote((prev) => prev ? { ...prev, ...update } : update);
+    });
+
     return () => {
       active = false;
-      clearInterval(interval);
+      unsubscribe();
     };
   }, [ticker]);
 

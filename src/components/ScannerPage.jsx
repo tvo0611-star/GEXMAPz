@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { clsx } from "clsx";
 import { Zap, RefreshCw, Plus, X } from "lucide-react";
 import { fetchUnusualFlow } from "../data/mockData";
@@ -21,12 +21,21 @@ function sentiment(callPrem, putPrem) {
 }
 
 export default function ScannerPage() {
-  const [watchlist, setWatchlist] = useState(DEFAULT_WATCHLIST);
+  const [watchlist, setWatchlist] = useState(() => {
+    try {
+      const saved = localStorage.getItem("scanner-watchlist");
+      return saved ? JSON.parse(saved) : DEFAULT_WATCHLIST;
+    } catch { return DEFAULT_WATCHLIST; }
+  });
   const [input, setInput] = useState("");
   const [results, setResults] = useState({});
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [activeTab, setActiveTab] = useState("all");
+
+  useEffect(() => {
+    try { localStorage.setItem("scanner-watchlist", JSON.stringify(watchlist)); } catch {}
+  }, [watchlist]);
 
   const addTicker = () => {
     const t = input.trim().toUpperCase();

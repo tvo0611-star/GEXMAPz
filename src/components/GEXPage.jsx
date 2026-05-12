@@ -72,6 +72,22 @@ function multiStop(stops, t) {
   return lerpRGB(stops[idx], stops[idx + 1], local);
 }
 
+// IV Surface: dark → blue → purple → orange → bright yellow
+const IV_SURFACE_STOPS = [
+  [14,  14,  25],
+  [20,  40, 120],
+  [100, 30, 160],
+  [200, 80,  20],
+  [240, 200, 30],
+];
+
+function ivSurfaceColor(iv, maxIV) {
+  if (iv <= 0 || maxIV <= 0) return "rgba(14,14,20,1)";
+  const t = Math.min(1, iv / (maxIV * 0.75));
+  const [r, g, b] = multiStop(IV_SURFACE_STOPS, t);
+  return `rgba(${r},${g},${b},${0.25 + t * 0.75})`;
+}
+
 // Negative GEX: light blue → dark blue → light purple → dark purple
 const NEG_STOPS = [
   [140, 200, 240],   // light blue
@@ -177,6 +193,7 @@ export default function GEXPage({ ticker, quote }) {
   const [analysis, setAnalysis] = useState(null);
   const [ivRank, setIvRank] = useState(null);
   const [skewOpen, setSkewOpen] = useState(false);
+  const [ivSurfOpen, setIvSurfOpen] = useState(false);
   const [skewExp, setSkewExp] = useState(null);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [marketTick, setMarketTick] = useState(0);
@@ -459,6 +476,37 @@ export default function GEXPage({ ticker, quote }) {
     return { status: "open", pct, label };
   }, [marketTick]);
 
+  // Expected move: EM = S × σ × √T using ATM IV from matrix for nearest 4 exps
+  const expectedMoves = useMemo(() => {
+    if (!matrix || !price) return [];
+    const nearestStrike = matrix.strikes.reduce((best, s) =>
+      Math.abs(s - price) < Math.abs(best - price) ? s : best, matrix.strikes[0]);
+    return matrix.expirations.slice(0, 4).map((exp) => {
+      const cell = matrix.cells[nearestStrike]?.[exp];
+      if (!cell) return null;
+      const avgIV = ((cell.callIV ?? 0) + (cell.putIV ?? 0)) / 2;
+      if (avgIV <= 0) return null;
+      const dte = Math.max(0, Math.round((new Date(exp) - new Date()) / 86400000));
+      const T = Math.max(1 / 365, dte / 365);
+      return { exp, dte, emDollar: price * avgIV * Math.sqrt(T), emPct: avgIV * Math.sqrt(T) * 100 };
+    }).filter(Boolean);
+  }, [matrix, price]);
+
+  // Max avg IV across all cells — used to scale IV surface colors
+  const maxIVValue = useMemo(() => {
+    if (!matrix) return 1;
+    let max = 0;
+    matrix.strikes.forEach((strike) => {
+      matrix.expirations.forEach((exp) => {
+        const cell = matrix.cells[strike]?.[exp];
+        if (!cell) return;
+        const avg = ((cell.callIV ?? 0) + (cell.putIV ?? 0)) / 2;
+        if (avg > max) max = avg;
+      });
+    });
+    return max || 1;
+  }, [matrix]);
+
   // IV skew data for selected expiration
   const skewData = useMemo(() => {
     if (!matrix || !skewExp) return [];
@@ -528,6 +576,20 @@ export default function GEXPage({ ticker, quote }) {
             />
           </div>
           <span className="font-mono text-xs text-muted shrink-0">4:00 PM ET</span>
+        </div>
+      )}
+
+      {/* Expected Move strip */}
+      {matrix && expectedMoves.length > 0 && (
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <span className="font-mono text-xs text-muted shrink-0">Exp. Move:</span>
+          {expectedMoves.map(({ exp, dte, emDollar, emPct }) => (
+            <div key={exp} className="flex items-center gap-1.5 bg-surface border border-border rounded px-2 py-1 font-mono text-xs">
+              <span className="text-muted">{dte === 0 ? "0DTE" : exp.slice(5)}</span>
+              <span className="text-yellow-300 font-semibold">±${emDollar.toFixed(2)}</span>
+              <span className="text-muted">(±{emPct.toFixed(1)}%)</span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -725,6 +787,14 @@ export default function GEXPage({ ticker, quote }) {
             IV Skew
           </button>
           <button
+            onClick={() => setIvSurfOpen((o) => !o)}
+            className={clsx("px-3 py-1.5 rounded text-xs font-mono transition-all",
+              ivSurfOpen ? "bg-accent/10 text-accent border border-accent/30" : "bg-surface border border-border text-muted hover:text-text"
+            )}
+          >
+            IV Surface
+          </button>
+          <button
             onClick={async () => {
               if (!alertsEnabled) {
                 const perm = await Notification.requestPermission();
@@ -809,6 +879,58 @@ export default function GEXPage({ ticker, quote }) {
           ) : (
             <div className="text-xs font-mono text-muted text-center py-8">No IV data for this expiration.</div>
           )}
+        </div>
+      )}
+
+      {/* IV Surface heatmap panel */}
+      {ivSurfOpen && matrix && (
+        <div className="bg-surface border border-border rounded-lg p-4 mb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="font-mono text-xs font-semibold text-text">IV Surface</span>
+            <span className="font-mono text-xs text-muted ml-auto">dark = low IV → yellow = high IV</span>
+          </div>
+          <div className="overflow-auto" style={{ maxHeight: 340 }}>
+            <table className="border-collapse" style={{ fontSize: 10 }}>
+              <thead>
+                <tr>
+                  <th className="sticky left-0 bg-surface border-b border-r border-border px-2 py-1.5 text-left font-mono text-xs text-muted font-normal whitespace-nowrap">Strike</th>
+                  {matrix.expirations.map((exp) => {
+                    const isToday = exp === new Date().toISOString().split("T")[0];
+                    return (
+                      <th key={exp} className={clsx("border-b border-r border-border px-2 py-1.5 text-center font-mono font-normal whitespace-nowrap min-w-[76px]", isToday ? "text-accent" : "text-muted")} style={{ fontSize: 10 }}>
+                        {isToday ? "0DTE" : exp.slice(5)}
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {matrix.strikes
+                  .filter((s) => price === 0 || (s >= price * 0.82 && s <= price * 1.18))
+                  .map((strike) => {
+                    const isATM = strike === atm;
+                    return (
+                      <tr key={strike} style={isATM ? { borderBottom: "1px solid rgba(0,229,255,0.4)" } : {}}>
+                        <td className={clsx("sticky left-0 bg-surface border-r border-border px-2 py-1 font-mono font-semibold whitespace-nowrap", isATM ? "text-accent" : "text-text")} style={{ fontSize: 10 }}>
+                          {strike.toFixed(1)}{isATM && <span className="ml-1 text-accent/60">←</span>}
+                        </td>
+                        {matrix.expirations.map((exp) => {
+                          const cell = matrix.cells[strike]?.[exp];
+                          const avgIV = cell ? ((cell.callIV ?? 0) + (cell.putIV ?? 0)) / 2 : 0;
+                          const bg = ivSurfaceColor(avgIV, maxIVValue);
+                          const bright = avgIV / maxIVValue > 0.5;
+                          return (
+                            <td key={exp} className="border-r border-border/30 text-right px-2 py-1 whitespace-nowrap" style={{ background: bg, color: bright ? "#fff" : "#888", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}>
+                              {avgIV > 0 ? `${(avgIV * 100).toFixed(0)}%` : <span style={{ color: "#2a2a4a" }}>—</span>}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

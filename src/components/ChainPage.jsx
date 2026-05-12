@@ -128,6 +128,17 @@ export default function ChainPage({ ticker, quote }) {
     atmStrike = closestStrike;
   }
 
+  // ATM straddle = ATM call mid + ATM put mid → market's priced-in expected move
+  let expectedMove = null;
+  if (chain && price > 0 && atmStrike !== null) {
+    const atmCall = chain.calls.find((c) => c.strike === atmStrike);
+    const atmPut = chain.puts.find((p) => p.strike === atmStrike);
+    if (atmCall && atmPut && atmCall.mid > 0 && atmPut.mid > 0) {
+      const straddle = atmCall.mid + atmPut.mid;
+      expectedMove = { dollar: straddle, pct: (straddle / price) * 100 };
+    }
+  }
+
   const colHeader = "px-2 py-2 text-left text-xs font-mono text-muted font-normal border-b border-border";
   const colHeaderR = "px-2 py-2 text-right text-xs font-mono text-muted font-normal border-b border-border";
 
@@ -363,11 +374,17 @@ export default function ChainPage({ ticker, quote }) {
     <div className="p-4 max-w-screen-2xl mx-auto">
       {/* Stats row */}
       {quote && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
           <StatCard label="PRICE" value={`$${quote.price.toFixed(2)}`} sub={`${quote.changePct >= 0 ? "+" : ""}${quote.changePct.toFixed(2)}%`} color={quote.change >= 0 ? "text-green" : "text-red"} />
           <StatCard label="IV30" value={`${(quote.iv30 * 100).toFixed(1)}%`} sub="Implied Vol" color="text-accent" />
           <StatCard label="HV30" value={`${(quote.hv30 * 100).toFixed(1)}%`} sub="Historical Vol" />
           <StatCard label="IV / HV" value={(quote.iv30 / quote.hv30).toFixed(2)} sub={quote.iv30 > quote.hv30 ? "IV elevated" : "IV compressed"} color={quote.iv30 > quote.hv30 ? "text-red" : "text-green"} />
+          <StatCard
+            label="EXP MOVE"
+            value={expectedMove ? `±$${expectedMove.dollar.toFixed(2)}` : "—"}
+            sub={expectedMove ? `±${expectedMove.pct.toFixed(1)}% · ATM straddle` : (chain ? "Load chain to compute" : "—")}
+            color="text-yellow-300"
+          />
         </div>
       )}
 
