@@ -174,13 +174,9 @@ function getTooltipDescription(view, value) {
   return value < 0 ? "Negative γ (amplifies vol)" : value > 0 ? "Positive γ (suppresses vol)" : "No open interest";
 }
 
-function textColor(value, maxAbs) {
+function textColor(value) {
   if (value === 0) return "#252535";
-  const t = Math.min(1, Math.abs(value) / (maxAbs * 0.55));
-  // Dark cells need light text, light cells need darker text
-  if (t < 0.25) return value < 0 ? "#7ab8d8" : "#7abf90";
-  if (t < 0.55) return value < 0 ? "#a8d0ee" : "#a8dab8";
-  return value < 0 ? "#dceeff" : "#fffff0";
+  return "#ffffff";
 }
 
 export default function GEXPage({ ticker, quote }) {
@@ -991,7 +987,7 @@ export default function GEXPage({ ticker, quote }) {
                       key={exp}
                       className={clsx(
                         "border-b border-r border-border px-2 py-2 text-center font-mono font-normal whitespace-nowrap min-w-[90px]",
-                        isToday ? "text-accent" : "text-muted"
+                        isToday ? "text-accent" : "text-text"
                       )}
                       style={{ fontSize: 10 }}
                     >
@@ -1053,7 +1049,7 @@ export default function GEXPage({ ticker, quote }) {
                       const total = totalGEXByStrike[strike] ?? 0;
                       const isKing = strike === kingStrike;
                       const bg = gexColor(total, maxAbsTotal);
-                      const fg = textColor(total, maxAbsTotal);
+                      const fg = textColor(total);
                       return (
                         <td
                           className="sticky z-10 border-r border-border/60 text-right px-2 py-1.5 whitespace-nowrap font-semibold"
@@ -1070,7 +1066,7 @@ export default function GEXPage({ ticker, quote }) {
                       const cell = matrix.cells[strike][exp] ?? { gex: 0, callOI: 0, putOI: 0 };
                       const value = getCellValue(cell, view);
                       const bg = getCellColor(value, view, maxAbsCell);
-                      const fg = textColor(value, maxAbsCell);
+                      const fg = textColor(value);
                       return (
                         <td
                           key={exp}
