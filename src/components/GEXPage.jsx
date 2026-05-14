@@ -1049,7 +1049,7 @@ export default function GEXPage({ ticker, quote }) {
                       const total = totalGEXByStrike[strike] ?? 0;
                       const isKing = strike === kingStrike;
                       const bg = gexColor(total, maxAbsTotal);
-                      const fg = textColor(total);
+                      const fg = total === 0 ? "#252535" : "#000000";
                       return (
                         <td
                           className="gex-total-col sticky z-10 border-r border-border/60 text-right px-2 py-1.5 whitespace-nowrap font-semibold"
