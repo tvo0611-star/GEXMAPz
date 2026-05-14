@@ -1053,7 +1053,7 @@ export default function GEXPage({ ticker, quote }) {
                       return (
                         <td
                           className="gex-total-col sticky z-10 border-r border-border/60 text-right px-2 py-1.5 whitespace-nowrap font-semibold"
-                          style={{ background: bg, color: fg, fontSize: 10, fontFamily: "'IBM Plex Mono', monospace", left: 80 }}
+                          style={{ background: bg, color: fg, fontSize: 10, fontFamily: "'IBM Plex Mono', monospace", left: 80, fontWeight: isKing ? 700 : 600 }}
                         >
                           {isKing && <span className="mr-1">👑</span>}
                           {total === 0 ? <span style={{ color: "#2a2a4a" }}>—</span> : fmtVal(total)}
