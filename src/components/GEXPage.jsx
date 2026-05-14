@@ -518,7 +518,7 @@ export default function GEXPage({ ticker, quote }) {
   }, [matrix, skewExp]);
 
   return (
-    <div className="p-4 max-w-screen-2xl mx-auto">
+    <div className="p-2 sm:p-4 max-w-screen-2xl mx-auto">
       {/* Price chart with GEX levels */}
       {ticker && (
         <ChartPanel
@@ -969,15 +969,15 @@ export default function GEXPage({ ticker, quote }) {
             </div>
           )}
 
-          <table className="border-collapse" style={{ fontSize: 11 }}>
+          <table className="border-collapse gex-table" style={{ fontSize: 11 }}>
             <thead>
               <tr>
                 {/* Strike header */}
-                <th className="sticky left-0 z-20 bg-surface border-b border-r border-border px-3 py-2 text-left font-mono text-xs text-muted font-normal whitespace-nowrap min-w-[80px]">
+                <th className="gex-strike-col sticky left-0 z-20 bg-surface border-b border-r border-border px-3 py-2 text-left font-mono text-xs text-muted font-normal whitespace-nowrap min-w-[80px]">
                   Strike
                 </th>
                 {/* Total GEX column header */}
-                <th className="sticky z-20 bg-surface border-b border-r border-border/60 px-2 py-2 text-center font-mono font-semibold whitespace-nowrap min-w-[90px] text-accent/80" style={{ fontSize: 10, left: 80 }}>
+                <th className="gex-total-col sticky z-20 bg-surface border-b border-r border-border/60 px-2 py-2 text-center font-mono font-semibold whitespace-nowrap min-w-[90px] text-accent/80" style={{ fontSize: 10, left: 80 }}>
                   {view === "flowGex" ? "Σ Flow" : "Σ GEX"}
                 </th>
                 {matrix.expirations.map((exp) => {
@@ -1017,7 +1017,7 @@ export default function GEXPage({ ticker, quote }) {
                     {/* Strike label */}
                     <td
                       className={clsx(
-                        "sticky left-0 z-10 bg-surface border-r border-border px-3 py-1.5 font-mono font-semibold whitespace-nowrap",
+                        "gex-strike-col sticky left-0 z-10 bg-surface border-r border-border px-3 py-1.5 font-mono font-semibold whitespace-nowrap",
                         isATM ? "text-accent" : isFlip ? "text-yellow-400" : "text-text"
                       )}
                       style={{ fontSize: 11 }}
@@ -1052,7 +1052,7 @@ export default function GEXPage({ ticker, quote }) {
                       const fg = textColor(total);
                       return (
                         <td
-                          className="sticky z-10 border-r border-border/60 text-right px-2 py-1.5 whitespace-nowrap font-semibold"
+                          className="gex-total-col sticky z-10 border-r border-border/60 text-right px-2 py-1.5 whitespace-nowrap font-semibold"
                           style={{ background: bg, color: fg, fontSize: 10, fontFamily: "'IBM Plex Mono', monospace", left: 80 }}
                         >
                           {isKing && <span className="mr-1">👑</span>}

@@ -41,3 +41,21 @@ body {
 .glow { box-shadow: 0 0 12px rgba(0, 229, 255, 0.25); }
 .glow-green { box-shadow: 0 0 12px rgba(0, 255, 136, 0.2); }
 .glow-red { box-shadow: 0 0 12px rgba(255, 68, 102, 0.2); }
+
+@media (max-width: 640px) {
+  .gex-table td,
+  .gex-table th {
+    font-size: 9px !important;
+    padding: 2px 5px !important;
+    min-width: 68px !important;
+  }
+  .gex-strike-col {
+    min-width: 48px !important;
+    max-width: 48px !important;
+  }
+  .gex-total-col {
+    min-width: 58px !important;
+    max-width: 58px !important;
+    left: 48px !important;
+  }
+}
