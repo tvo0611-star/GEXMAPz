@@ -74,11 +74,11 @@ function buildPriceLines(series, callWalls, putWalls, flipPoint, maxPain, gexLev
   // so more significant levels show larger, brighter dots.
   const topGEX = [...gexLevels]
     .sort((a, b) => Math.abs(b.gex) - Math.abs(a.gex))
-    .slice(0, 40);
+    .slice(0, 20);
 
   topGEX.forEach(({ strike, gex }) => {
     const relMag = maxAbsGEX > 0 ? Math.min(1, Math.abs(gex) / maxAbsGEX) : 0;
-    if (relMag < 0.05) return;
+    if (relMag < 0.20) return;
     const alpha = (0.12 + relMag * 0.78).toFixed(2);
     const dotWidth = relMag >= 0.65 ? 3 : relMag >= 0.3 ? 2 : 1;
     const color = gex >= 0
