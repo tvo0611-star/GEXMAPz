@@ -986,11 +986,11 @@ export default function GEXPage({ ticker, quote }) {
             <thead>
               <tr>
                 {/* Strike header */}
-                <th className="gex-strike-col sticky left-0 top-0 z-30 bg-surface border-b border-r border-border px-3 py-2 text-left font-mono text-xs text-muted font-normal whitespace-nowrap min-w-[80px]">
+                <th className="gex-strike-col sticky left-0 top-0 z-30 bg-surface border-b border-r border-white/20 px-3 py-2 text-left font-mono text-xs text-muted font-normal whitespace-nowrap min-w-[80px]">
                   Strike
                 </th>
                 {/* Total GEX column header */}
-                <th className="gex-total-col sticky top-0 z-30 bg-surface border-b border-r border-border/60 px-2 py-2 text-center font-mono font-semibold whitespace-nowrap min-w-[90px] text-accent/80" style={{ fontSize: 10, left: 80, top: 0 }}>
+                <th className="gex-total-col sticky top-0 z-30 bg-surface border-b border-r border-white/20 px-2 py-2 text-center font-mono font-semibold whitespace-nowrap min-w-[90px] text-accent/80" style={{ fontSize: 10, left: 80, top: 0 }}>
                   {view === "flowGex" ? "Σ Flow" : "Σ GEX"}
                 </th>
                 {matrix.expirations.map((exp) => {
@@ -999,7 +999,7 @@ export default function GEXPage({ ticker, quote }) {
                     <th
                       key={exp}
                       className={clsx(
-                        "sticky top-0 z-10 bg-surface border-b border-r border-border px-2 py-2 text-center font-mono font-normal whitespace-nowrap min-w-[90px]",
+                        "sticky top-0 z-10 bg-surface border-b border-r border-white/20 px-2 py-2 text-center font-mono font-normal whitespace-nowrap min-w-[90px]",
                         isToday ? "text-accent" : "text-text"
                       )}
                       style={{ fontSize: 10 }}
@@ -1022,7 +1022,7 @@ export default function GEXPage({ ticker, quote }) {
                   <tr
                     key={strike}
                     className={clsx(
-                      "border-b border-border",
+                      "border-b border-white/15",
                       isATM ? "border-b-accent/40" : "",
                     )}
                     style={isATM ? { borderBottom: "1px solid rgba(0,229,255,0.4)" } : {}}
@@ -1030,7 +1030,7 @@ export default function GEXPage({ ticker, quote }) {
                     {/* Strike label */}
                     <td
                       className={clsx(
-                        "gex-strike-col sticky left-0 z-10 bg-surface border-r border-border px-3 py-1.5 font-mono font-semibold whitespace-nowrap",
+                        "gex-strike-col sticky left-0 z-10 bg-surface border-r border-white/20 px-3 py-1.5 font-mono font-semibold whitespace-nowrap",
                         isATM ? "text-accent" : isFlip ? "text-yellow-400" : "text-text"
                       )}
                       style={{ fontSize: 11 }}
@@ -1065,7 +1065,7 @@ export default function GEXPage({ ticker, quote }) {
                       const fg = total === 0 ? "#252535" : isKing ? "#000000" : "#ffffff";
                       return (
                         <td
-                          className="gex-total-col sticky z-10 border-r border-border/60 text-right px-2 py-1.5 whitespace-nowrap font-semibold"
+                          className="gex-total-col sticky z-10 border-r border-white/20 text-right px-2 py-1.5 whitespace-nowrap font-semibold"
                           style={{ background: bg, color: fg, fontSize: 10, fontFamily: "'IBM Plex Mono', monospace", left: 80, fontWeight: isKing ? 700 : 600 }}
                         >
                           {isKing && <span className="mr-1">👑</span>}
@@ -1083,7 +1083,7 @@ export default function GEXPage({ ticker, quote }) {
                       return (
                         <td
                           key={exp}
-                          className="border-r border-border/30 text-right px-2 py-1.5 cursor-default transition-all hover:brightness-125 whitespace-nowrap"
+                          className="border-r border-white/15 text-right px-2 py-1.5 cursor-default transition-all hover:brightness-125 whitespace-nowrap"
                           style={{ background: bg, color: fg, fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                           onMouseEnter={(e) => setTooltip({ strike, exp, value, cell, x: e.clientX, y: e.clientY })}
                           onMouseLeave={() => setTooltip(null)}
