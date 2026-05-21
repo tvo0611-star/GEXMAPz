@@ -268,8 +268,14 @@ export default function GEXPage({ ticker, quote }) {
     const rows = containerRef.current.querySelectorAll("tbody tr");
     if (!rows.length) return;
 
-    const closestIndex = matrix.strikes.reduce((bestIndex, strike, idx) => {
-      const bestStrike = matrix.strikes[bestIndex];
+    const filtered = matrix.strikes.filter((strike) =>
+      matrix.expirations.some((exp) => {
+        const cell = matrix.cells[strike]?.[exp];
+        return cell && (cell.callOI > 0 || cell.putOI > 0);
+      })
+    );
+    const closestIndex = filtered.reduce((bestIndex, strike, idx) => {
+      const bestStrike = filtered[bestIndex];
       return Math.abs(strike - price) < Math.abs(bestStrike - price) ? idx : bestIndex;
     }, 0);
 
@@ -457,6 +463,17 @@ export default function GEXPage({ ticker, quote }) {
     const timeLabel = ageMin < 1 ? "<1m ago" : ageMin >= 55 ? "1h ago" : `${ageMin}m ago`;
     return { pct, timeLabel };
   })();
+
+  // Filter out strikes with no open interest across all expirations
+  const activeStrikes = useMemo(() => {
+    if (!matrix) return [];
+    return matrix.strikes.filter((strike) =>
+      matrix.expirations.some((exp) => {
+        const cell = matrix.cells[strike]?.[exp];
+        return cell && (cell.callOI > 0 || cell.putOI > 0);
+      })
+    );
+  }, [matrix]);
 
   // Stable array for ChartPanel — only rebuilds when matrix changes, not on tooltip/hover
   const gexLevels = useMemo(() => {
@@ -966,7 +983,7 @@ export default function GEXPage({ ticker, quote }) {
       {(!matrix && loading) ? (
         <LoadingSpinner />
       ) : matrix ? (
-        <div ref={containerRef} className="bg-surface border border-border rounded-lg overflow-auto relative">
+        <div ref={containerRef} className="bg-surface border border-border rounded-lg overflow-auto relative" style={{ maxHeight: "70vh" }}>
           {/* Tooltip */}
           {tooltip && (
             <div
@@ -1015,7 +1032,7 @@ export default function GEXPage({ ticker, quote }) {
               </tr>
             </thead>
             <tbody>
-              {matrix.strikes.map((strike) => {
+              {activeStrikes.map((strike) => {
                 const isATM = strike === atm;
                 const isFlip = strike === flipPoint;
                 const callWallIndex = matrix.callWalls.findIndex((item) => item.strike === strike);
