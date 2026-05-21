@@ -609,34 +609,38 @@ export default function GEXPage({ ticker, quote }) {
             label={view === "gex" ? "NET GEX" : view === "vex" ? "ABS GEX" : view === "flowGex" ? "FLOW GEX" : view === "callOI" ? "CALL OI" : view === "putOI" ? "PUT OI" : "NET OI"}
             value={fmtVal(totalValue)}
             color={totalValue >= 0 ? "text-green-400" : "text-blue-400"}
+            borderClass="border-white/30"
             sub={
               gexChangeInfo.collecting
                 ? <span className="text-muted/50 italic">building history…</span>
                 : <span className={gexChangeInfo.pct >= 0 ? "text-green-400" : "text-red-400"}>{gexChangeInfo.pct >= 0 ? "+" : ""}{gexChangeInfo.pct.toFixed(1)}% vs {gexChangeInfo.timeLabel}</span>
             }
           />
-          <StatCard label="SPOT PRICE" value={`$${price.toFixed(2)}`} sub={`ATM: $${atm}`} color="text-accent" />
-          <StatCard label="GAMMA FLIP" value={view === "gex" || view === "vex" ? (flipPoint ? `$${flipPoint}` : "—") : "—"} sub={matrix ? `Near exp: ${matrix.expirations[0]}` : "Zero-crossing level"} color="text-yellow-300" />
-          <StatCard label="PRICE vs FLIP" value={view === "gex" || view === "vex" ? (flipPoint ? (price > flipPoint ? "Above flip" : "Below flip") : "—") : "—"} sub={view === "gex" || view === "vex" ? (flipPoint ? `$${Math.abs(price - flipPoint).toFixed(0)} away` : "") : ""} color={flipPoint && price > flipPoint ? "text-green" : "text-red"} />
-          <StatCard label="CALL WALLS" value={matrix?.callWalls?.length ? matrix.callWalls.map((w) => `$${w.strike}`).join(", ") : "—"} sub="Top 3 0DTE call OI" color="text-green-300" />
-          <StatCard label="PUT WALLS" value={matrix?.putWalls?.length ? matrix.putWalls.map((w) => `$${w.strike}`).join(", ") : "—"} sub="Top 3 0DTE put OI" color="text-red-300" />
-          <StatCard label="MAX PAIN" value={matrix?.maxPain ? `$${matrix.maxPain.toFixed(1)}` : "—"} sub="Minimizes expiring worthless" color="text-white" />
+          <StatCard label="SPOT PRICE" value={`$${price.toFixed(2)}`} sub={`ATM: $${atm}`} color="text-accent" borderClass="border-white/30" />
+          <StatCard label="GAMMA FLIP" value={view === "gex" || view === "vex" ? (flipPoint ? `$${flipPoint}` : "—") : "—"} sub={matrix ? `Near exp: ${matrix.expirations[0]}` : "Zero-crossing level"} color="text-yellow-300" borderClass="border-yellow-400/60" />
+          <StatCard label="PRICE vs FLIP" value={view === "gex" || view === "vex" ? (flipPoint ? (price > flipPoint ? "Above flip" : "Below flip") : "—") : "—"} sub={view === "gex" || view === "vex" ? (flipPoint ? `$${Math.abs(price - flipPoint).toFixed(0)} away` : "") : ""} color={flipPoint && price > flipPoint ? "text-green" : "text-red"} borderClass={flipPoint ? (price > flipPoint ? "border-green/60" : "border-red/60") : "border-white/30"} />
+          <StatCard label="CALL WALLS" value={matrix?.callWalls?.length ? matrix.callWalls.map((w) => `$${w.strike}`).join(", ") : "—"} sub="Top 3 0DTE call OI" color="text-green-300" borderClass="border-green/50" />
+          <StatCard label="PUT WALLS" value={matrix?.putWalls?.length ? matrix.putWalls.map((w) => `$${w.strike}`).join(", ") : "—"} sub="Top 3 0DTE put OI" color="text-red-300" borderClass="border-red/50" />
+          <StatCard label="MAX PAIN" value={matrix?.maxPain ? `$${matrix.maxPain.toFixed(1)}` : "—"} sub="Minimizes expiring worthless" color="text-white" borderClass="border-purple-400/60" />
           <StatCard
             label="NEG GEX DEPTH"
             value={negGexDepth === 0 ? "—" : fmtVal(negGexDepth)}
             color={negGexDepth < -1e8 ? "text-red-400" : negGexDepth < 0 ? "text-orange-400" : "text-green-400"}
+            borderClass="border-orange-400/60"
             sub={negGexDepth === 0 ? "No neg-gamma strikes" : negGexDepth < -5e8 ? "Moves amplified" : "Mild neg gamma"}
           />
           <StatCard
             label="CHARM BIAS"
             value={totalCharmBias === 0 ? "—" : fmtVal(totalCharmBias)}
             color={totalCharmBias >= 0 ? "text-green-400" : "text-red-400"}
+            borderClass="border-white/30"
             sub={totalCharmBias >= 0 ? "Dealers buy into close" : "Dealers sell into close"}
           />
           <StatCard
             label="ATM IV / HV30"
             value={ivRank ? `${ivRank.currentIV}% / ${ivRank.hv30}%` : "—"}
             color={ivRank ? (ivRank.currentIV / (ivRank.hv30 || 1) > 1.3 ? "text-red-400" : ivRank.currentIV / (ivRank.hv30 || 1) < 0.8 ? "text-green-400" : "text-yellow-300") : "text-muted"}
+            borderClass="border-white/30"
             sub={ivRank ? (ivRank.currentIV / (ivRank.hv30 || 1) > 1.3 ? "IV elevated — sell prem" : ivRank.currentIV / (ivRank.hv30 || 1) < 0.8 ? "IV compressed — buy prem" : "IV fair value") : "Loading…"}
           />
         </div>

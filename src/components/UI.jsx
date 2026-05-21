@@ -110,9 +110,9 @@ export function Header({ ticker, quote, onSearch, activePage, setPage }) {
   );
 }
 
-export function StatCard({ label, value, sub, color = "text-text" }) {
+export function StatCard({ label, value, sub, color = "text-text", borderClass = "border-border" }) {
   return (
-    <div className="bg-surface border border-border rounded-lg p-3">
+    <div className={clsx("bg-surface border rounded-lg p-3", borderClass)}>
       <div className="text-xs text-muted mb-1 font-mono">{label}</div>
       <div className={clsx("font-mono text-base font-semibold", color)}>{value}</div>
       {sub && <div className="text-xs text-muted mt-0.5">{sub}</div>}
