@@ -25,12 +25,16 @@ export function Header({ ticker, quote, onSearch, activePage, setPage }) {
         {/* Main row: logo + search + quote + desktop nav */}
         <div className="h-14 flex items-center gap-3">
           {/* Logo */}
-          <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => onSearch("SPY")}
+            className="flex items-center gap-2 shrink-0 hover:opacity-80 transition-opacity"
+            title="Reset to SPY"
+          >
             <div className="w-7 h-7 rounded bg-accent/10 border border-accent/30 flex items-center justify-center">
               <span className="text-accent font-mono text-xs font-bold">Θ</span>
             </div>
             <span className="hidden sm:block font-mono text-sm font-semibold text-text tracking-tight">GEXmapz 🔥</span>
-          </div>
+          </button>
 
           {/* Search — full width on mobile */}
           <form onSubmit={handleSearch} className="relative flex-1 sm:max-w-xs">
