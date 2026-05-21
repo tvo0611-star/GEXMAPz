@@ -166,6 +166,7 @@ export default function ChartPanel({ ticker, callWalls = [], putWalls = [], flip
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
   const priceLinesRef = useRef([]);
+  const fittedRef = useRef(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -202,6 +203,7 @@ export default function ChartPanel({ ticker, callWalls = [], putWalls = [], flip
     if (!seriesRef.current) return;
     setError(null);
     setLoading(true);
+    fittedRef.current = false;
 
     let active = true;
 
@@ -210,7 +212,10 @@ export default function ChartPanel({ ticker, callWalls = [], putWalls = [], flip
         .then((candles) => {
           if (!active || !seriesRef.current) return;
           seriesRef.current.setData(candles);
-          chartRef.current?.timeScale().fitContent();
+          if (!fittedRef.current) {
+            chartRef.current?.timeScale().fitContent();
+            fittedRef.current = true;
+          }
           setLoading(false);
         })
         .catch((err) => {
