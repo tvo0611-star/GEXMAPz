@@ -618,9 +618,9 @@ export default function GEXPage({ ticker, quote }) {
           />
           <StatCard label="SPOT PRICE" value={`$${price.toFixed(2)}`} sub={`ATM: $${atm}`} color="text-accent" borderClass="border-white/30" />
           <StatCard label="GAMMA FLIP" value={view === "gex" || view === "vex" ? (flipPoint ? `$${flipPoint}` : "—") : "—"} sub={matrix ? `Near exp: ${matrix.expirations[0]}` : "Zero-crossing level"} color="text-yellow-300" borderClass="border-yellow-400/60" />
-          <StatCard label="PRICE vs FLIP" value={view === "gex" || view === "vex" ? (flipPoint ? (price > flipPoint ? "Above flip" : "Below flip") : "—") : "—"} sub={view === "gex" || view === "vex" ? (flipPoint ? `$${Math.abs(price - flipPoint).toFixed(0)} away` : "") : ""} color={flipPoint && price > flipPoint ? "text-green" : "text-red"} borderClass={flipPoint ? (price > flipPoint ? "border-green/60" : "border-red/60") : "border-white/30"} />
-          <StatCard label="CALL WALLS" value={matrix?.callWalls?.length ? matrix.callWalls.map((w) => `$${w.strike}`).join(", ") : "—"} sub="Top 3 0DTE call OI" color="text-green-300" borderClass="border-green/50" />
-          <StatCard label="PUT WALLS" value={matrix?.putWalls?.length ? matrix.putWalls.map((w) => `$${w.strike}`).join(", ") : "—"} sub="Top 3 0DTE put OI" color="text-red-300" borderClass="border-red/50" />
+          <StatCard label="PRICE vs FLIP" value={view === "gex" || view === "vex" ? (flipPoint ? (price > flipPoint ? "Above flip" : "Below flip") : "—") : "—"} sub={view === "gex" || view === "vex" ? (flipPoint ? `$${Math.abs(price - flipPoint).toFixed(0)} away` : "") : ""} color={flipPoint && price > flipPoint ? "text-green" : "text-red"} borderClass={flipPoint ? (price > flipPoint ? "border-emerald-400/70" : "border-rose-500/70") : "border-white/30"} />
+          <StatCard label="CALL WALLS" value={matrix?.callWalls?.length ? matrix.callWalls.map((w) => `$${w.strike}`).join(", ") : "—"} sub="Top 3 0DTE call OI" color="text-green-300" borderClass="border-emerald-400/60" />
+          <StatCard label="PUT WALLS" value={matrix?.putWalls?.length ? matrix.putWalls.map((w) => `$${w.strike}`).join(", ") : "—"} sub="Top 3 0DTE put OI" color="text-red-300" borderClass="border-rose-500/60" />
           <StatCard label="MAX PAIN" value={matrix?.maxPain ? `$${matrix.maxPain.toFixed(1)}` : "—"} sub="Minimizes expiring worthless" color="text-white" borderClass="border-purple-400/60" />
           <StatCard
             label="NEG GEX DEPTH"
