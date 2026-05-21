@@ -271,7 +271,7 @@ export default function GEXPage({ ticker, quote }) {
     const filtered = matrix.strikes.filter((strike) =>
       matrix.expirations.some((exp) => {
         const cell = matrix.cells[strike]?.[exp];
-        return cell && (cell.callOI > 0 || cell.putOI > 0);
+        return cell && getCellValue(cell, "gex") !== 0;
       })
     );
     const closestIndex = filtered.reduce((bestIndex, strike, idx) => {
@@ -464,16 +464,18 @@ export default function GEXPage({ ticker, quote }) {
     return { pct, timeLabel };
   })();
 
-  // Filter out strikes with no open interest across all expirations
+  // Filter out strikes where every cell would display "—" for the current view.
+  // Deep OTM strikes can have non-zero OI but near-zero gamma, making gex round to 0.
   const activeStrikes = useMemo(() => {
     if (!matrix) return [];
     return matrix.strikes.filter((strike) =>
       matrix.expirations.some((exp) => {
         const cell = matrix.cells[strike]?.[exp];
-        return cell && (cell.callOI > 0 || cell.putOI > 0);
+        if (!cell) return false;
+        return getCellValue(cell, view) !== 0;
       })
     );
-  }, [matrix]);
+  }, [matrix, view]);
 
   // Stable array for ChartPanel — only rebuilds when matrix changes, not on tooltip/hover
   const gexLevels = useMemo(() => {
