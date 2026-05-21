@@ -69,15 +69,18 @@ const CANDLE_OPTS = {
 function buildPriceLines(series, callWalls, putWalls, flipPoint, maxPain, gexLevels, maxAbsGEX) {
   const lines = [];
 
-  // GEX heatmap lines — drawn first so walls render on top
+  // GEX dot heatmap — drawn first so walls render on top
+  // Dot size (lineWidth) and color depth both scale with magnitude,
+  // so more significant levels show larger, brighter dots.
   const topGEX = [...gexLevels]
     .sort((a, b) => Math.abs(b.gex) - Math.abs(a.gex))
-    .slice(0, 25);
+    .slice(0, 40);
 
   topGEX.forEach(({ strike, gex }) => {
     const relMag = maxAbsGEX > 0 ? Math.min(1, Math.abs(gex) / maxAbsGEX) : 0;
     if (relMag < 0.05) return;
-    const alpha = (0.25 + relMag * 0.55).toFixed(2);
+    const alpha = (0.12 + relMag * 0.78).toFixed(2);
+    const dotWidth = relMag >= 0.65 ? 3 : relMag >= 0.3 ? 2 : 1;
     const color = gex >= 0
       ? `rgba(34,197,94,${alpha})`
       : `rgba(139,92,246,${alpha})`;
@@ -85,8 +88,8 @@ function buildPriceLines(series, callWalls, putWalls, flipPoint, maxPain, gexLev
       series.createPriceLine({
         price: strike,
         color,
-        lineWidth: relMag >= 0.5 ? 2 : 1,
-        lineStyle: LineStyle.Solid,
+        lineWidth: dotWidth,
+        lineStyle: LineStyle.Dotted,
         axisLabelVisible: false,
         title: "",
       })
@@ -237,9 +240,17 @@ export default function ChartPanel({ ticker, callWalls = [], putWalls = [], flip
       <div className="px-4 py-2 border-b border-border flex items-center gap-4">
         <span className="font-mono text-xs font-semibold text-accent">{ticker} — 5m</span>
         <div className="flex items-center gap-3 text-xs font-mono text-muted flex-wrap">
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-2.5 rounded-sm bg-green-400/50" />
-            <span className="inline-block w-3 h-2.5 rounded-sm bg-purple-500/50" />
+          <span className="flex items-center gap-1.5">
+            <span className="flex gap-0.5 items-center">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-400/40" />
+              <span className="inline-block w-2 h-2 rounded-full bg-green-400/70" />
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-400" />
+            </span>
+            <span className="flex gap-0.5 items-center">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400/40" />
+              <span className="inline-block w-2 h-2 rounded-full bg-purple-400/70" />
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-purple-400" />
+            </span>
             GEX Heat
           </span>
           <span className="flex items-center gap-1">
