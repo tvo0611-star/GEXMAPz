@@ -179,6 +179,19 @@ function textColor(value) {
   return "#ffffff";
 }
 
+// Blend rgba gexColor against the solid surface (#1e1e28) to produce an opaque bg
+// needed for sticky columns so underlying cells don't bleed through
+const SURFACE_RGB = [30, 30, 40];
+function gexColorSolid(value, maxAbs) {
+  if (value === 0 || maxAbs === 0) return `rgb(${SURFACE_RGB.join(",")})`;
+  const t = Math.min(1, Math.abs(value) / (maxAbs * 0.55));
+  const stops = value < 0 ? NEG_STOPS : POS_STOPS;
+  const [r, g, b] = multiStop(stops, t);
+  const a = 0.25 + t * 0.75;
+  const [sr, sg, sb] = SURFACE_RGB;
+  return `rgb(${Math.round(r * a + sr * (1 - a))},${Math.round(g * a + sg * (1 - a))},${Math.round(b * a + sb * (1 - a))})`;
+}
+
 export default function GEXPage({ ticker, quote }) {
   const [matrix, setMatrix] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -973,11 +986,11 @@ export default function GEXPage({ ticker, quote }) {
             <thead>
               <tr>
                 {/* Strike header */}
-                <th className="gex-strike-col sticky left-0 z-20 bg-surface border-b border-r border-border px-3 py-2 text-left font-mono text-xs text-muted font-normal whitespace-nowrap min-w-[80px]">
+                <th className="gex-strike-col sticky left-0 top-0 z-30 bg-surface border-b border-r border-border px-3 py-2 text-left font-mono text-xs text-muted font-normal whitespace-nowrap min-w-[80px]">
                   Strike
                 </th>
                 {/* Total GEX column header */}
-                <th className="gex-total-col sticky z-20 bg-surface border-b border-r border-border/60 px-2 py-2 text-center font-mono font-semibold whitespace-nowrap min-w-[90px] text-accent/80" style={{ fontSize: 10, left: 80 }}>
+                <th className="gex-total-col sticky top-0 z-30 bg-surface border-b border-r border-border/60 px-2 py-2 text-center font-mono font-semibold whitespace-nowrap min-w-[90px] text-accent/80" style={{ fontSize: 10, left: 80, top: 0 }}>
                   {view === "flowGex" ? "Σ Flow" : "Σ GEX"}
                 </th>
                 {matrix.expirations.map((exp) => {
@@ -986,7 +999,7 @@ export default function GEXPage({ ticker, quote }) {
                     <th
                       key={exp}
                       className={clsx(
-                        "border-b border-r border-border px-2 py-2 text-center font-mono font-normal whitespace-nowrap min-w-[90px]",
+                        "sticky top-0 z-10 bg-surface border-b border-r border-border px-2 py-2 text-center font-mono font-normal whitespace-nowrap min-w-[90px]",
                         isToday ? "text-accent" : "text-text"
                       )}
                       style={{ fontSize: 10 }}
@@ -1048,7 +1061,7 @@ export default function GEXPage({ ticker, quote }) {
                     {(() => {
                       const total = totalGEXByStrike[strike] ?? 0;
                       const isKing = strike === kingStrike;
-                      const bg = gexColor(total, maxAbsTotal);
+                      const bg = gexColorSolid(total, maxAbsTotal);
                       const fg = total === 0 ? "#252535" : isKing ? "#000000" : "#ffffff";
                       return (
                         <td
