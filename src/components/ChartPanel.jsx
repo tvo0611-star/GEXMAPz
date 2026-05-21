@@ -4,20 +4,11 @@ import { createChart, CandlestickSeries, LineStyle } from "lightweight-charts";
 const TRADIER_TOKEN = import.meta.env.VITE_TRADIER_TOKEN;
 
 // Tradier returns ET local-time strings ("2024-05-21 09:30:00").
-// Parse them as actual ET → correct UTC Unix seconds, handling DST automatically.
+// lightweight-charts v5 has no timezone support, so we use the "fake UTC" pattern:
+// append 'Z' so the time is stored as-is (09:30 ET → 09:30 "UTC") and the chart
+// naturally displays the correct ET times without any offset conversion.
 function etStringToUnix(timeStr) {
-  const utcDate = new Date(timeStr.replace(' ', 'T') + 'Z'); // treat as UTC first
-  const nyParts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York',
-    hour: 'numeric', minute: 'numeric', hour12: false,
-  }).formatToParts(utcDate);
-  const nyH = parseInt(nyParts.find((p) => p.type === 'hour').value);
-  const nyM = parseInt(nyParts.find((p) => p.type === 'minute').value);
-  const utcH = utcDate.getUTCHours();
-  const utcM = utcDate.getUTCMinutes();
-  let offsetMin = (utcH * 60 + utcM) - (nyH * 60 + nyM);
-  if (offsetMin < 0) offsetMin += 1440;
-  return Math.floor(utcDate.getTime() / 1000) + offsetMin * 60;
+  return Math.floor(new Date(timeStr.replace(' ', 'T') + 'Z').getTime() / 1000);
 }
 
 async function fetchCandles(ticker) {
@@ -56,9 +47,6 @@ async function fetchCandles(ticker) {
 }
 
 const CHART_OPTS = {
-  localization: {
-    timezone: 'America/New_York',
-  },
   layout: {
     background: { color: "#0e0e14" },
     textColor: "#8888aa",
