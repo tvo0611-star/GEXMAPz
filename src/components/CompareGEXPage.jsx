@@ -302,7 +302,7 @@ export default function CompareGEXPage() {
         </div>
       </div>
 
-      <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div ref={containerRef} className="grid grid-cols-3 gap-3">
         {["QQQ", "SPY", "SPX"].map((ticker) => (
           <GEXColumn
             key={ticker}
