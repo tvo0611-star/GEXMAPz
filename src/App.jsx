@@ -54,7 +54,7 @@ export default function App() {
         {page === "GEX" && <GEXPage ticker={ticker} quote={quote} />}
         {page === "Exposure" && <ExposurePage ticker={ticker} quote={quote} />}
         {page === "Map" && <IntervalMapPage ticker={ticker} quote={quote} />}
-{page === "Compare GEX" && <CompareGEXPage />}
+        {page === "Trinity" && <CompareGEXPage />}
         {page === "Flow" && <FlowPage ticker={ticker} quote={quote} />}
         {page === "Scanner" && <ScannerPage />}
       </main>

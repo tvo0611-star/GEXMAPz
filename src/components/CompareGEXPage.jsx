@@ -104,14 +104,14 @@ function GEXColumn({ ticker, matrix, quote, maxAbsCell, view }) {
 
       {/* Matrix table */}
       <div className="overflow-auto gex-scroll-area" data-ticker={ticker} style={{ maxHeight: "600px" }}>
-        <table className="border-collapse" style={{ fontSize: 10 }}>
+        <table className="border-collapse w-full" style={{ fontSize: 10 }}>
           <thead>
             <tr>
-              <th className="sticky top-0 left-0 z-20 bg-surface border-b border-r border-border px-2 py-1.5 text-left font-mono text-xs text-muted font-normal whitespace-nowrap min-w-[60px]">
+              <th className="sticky top-0 left-0 z-20 bg-surface border-b border-r border-border px-2 py-1.5 text-left font-mono text-xs text-muted font-normal whitespace-nowrap w-[70px]">
                 Strike
               </th>
               <th
-                className="sticky top-0 border-b border-r border-border px-1 py-1.5 text-center font-mono font-normal whitespace-nowrap min-w-[70px] bg-accent/10 text-accent"
+                className="sticky top-0 border-b border-r border-border px-1 py-1.5 text-center font-mono font-normal whitespace-nowrap bg-accent/10 text-accent w-full"
                 style={{ fontSize: 9 }}
               >
                 0DTE
@@ -160,8 +160,8 @@ function GEXColumn({ ticker, matrix, quote, maxAbsCell, view }) {
                     )}
                   </td>
                   <td
-                    className="border-r border-border/30 text-right px-1 py-1 cursor-default hover:brightness-125 transition-all whitespace-nowrap"
-                    style={{ background: bg, color: fg, fontSize: 9, fontFamily: "'IBM Plex Mono', monospace" }}
+                    className="border-r border-border/30 text-right px-3 py-1 cursor-default hover:brightness-125 transition-all w-full"
+                    style={{ background: bg, color: fg, fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                     onMouseEnter={(e) => setTooltip({ strike, exp: today, value, cell, x: e.clientX, y: e.clientY })}
                     onMouseLeave={() => setTooltip(null)}
                     onMouseMove={(e) => setTooltip((t) => (t ? { ...t, x: e.clientX, y: e.clientY } : null))}
@@ -214,7 +214,7 @@ export default function CompareGEXPage() {
         if (!active) return;
         setMatrices({ QQQ: qqq_matrix, SPY: spy_matrix, SPX: spx_matrix });
       } catch (error) {
-        console.error("Compare GEX refresh failed:", error);
+        console.error("Trinity refresh failed:", error);
       } finally {
         if (active) {
           setLoading(false);
@@ -281,7 +281,7 @@ export default function CompareGEXPage() {
     <div className="p-4 max-w-screen-2xl mx-auto">
       <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-mono font-semibold text-accent mb-1">GEX Comparison — 0DTE</h2>
+          <h2 className="text-lg font-mono font-semibold text-accent mb-1">Trinity — 0DTE</h2>
           <p className="text-sm font-mono text-muted">Green = positive gamma · Blue/Purple = negative gamma</p>
         </div>
         <div className="flex gap-1">
