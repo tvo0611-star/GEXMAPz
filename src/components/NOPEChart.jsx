@@ -56,7 +56,11 @@ export default function NOPEChart({ ticker }) {
     if (!ticker) return;
     try {
       const res = await fetch(`/api/nope?ticker=${encodeURIComponent(ticker)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try { const b = await res.json(); if (b.error) msg = b.error; } catch {}
+        throw new Error(msg);
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       const timeLabel = new Date(data.timestamp).toLocaleTimeString("en-US", {
@@ -134,8 +138,8 @@ export default function NOPEChart({ ticker }) {
               Loading NOPE…
             </div>
           ) : history.length === 0 ? (
-            <div className="flex items-center justify-center h-28 text-xs font-mono text-muted">
-              {error ? `Error: ${error}` : "No data yet — polls every 60s during market hours"}
+            <div className="flex items-center justify-center h-28 text-xs font-mono text-center px-4" style={{ color: error ? "#ff4466" : undefined }}>
+              {error ? error : "No data yet — polls every 60s during market hours"}
             </div>
           ) : (
             <>
