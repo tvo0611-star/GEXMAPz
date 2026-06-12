@@ -4,6 +4,7 @@ import { StatCard, LoadingSpinner, EmptyState } from "./UI";
 import ChartPanel from "./ChartPanel";
 import { clsx } from "clsx";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import NOPEChart from "./NOPEChart";
 
 // Black-Scholes gamma: how much gamma a single contract contributes at spot S
 function bsGamma(S, K, sigma, tau) {
@@ -1123,6 +1124,9 @@ export default function GEXPage({ ticker, quote }) {
           </table>
         </div>
       ) : null}
+
+      {/* NOPE chart — polls /api/nope every 60s during market hours */}
+      <NOPEChart ticker={ticker} />
     </div>
   );
 }
